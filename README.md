@@ -8,7 +8,7 @@ Home network segmentation, IoT control, and automation.
 |---|---|
 | Bell Gigahub | Fibre WAN (1.5Gbps), main wifi SSID `Near5G` (trusted) |
 | TL-SG108E | 8-port managed switch, VLAN brain |
-| Raspberry Pi 4 8GB | Bridge box — firewall, routing, DHCP, monitoring |
+| Raspberry Pi 5 8GB | Bridge box — firewall, routing, DHCP, monitoring |
 | Nest Wifi (non-Pro) | Dumb AP for IoT 2.4GHz SSID `Near` |
 | ThinkPad mini PC | Proxmox host → Home Assistant VM |
 | Dell OptiPlex | Home servers |
@@ -56,7 +56,7 @@ Home network segmentation, IoT control, and automation.
 
 - [x] Network design finalised
 - [x] Switch port/VLAN table defined
-- [ ] Pi 4 flashed — DietPi 64-bit (2026-04-20)
+- [x] Pi 5 flashed — DietPi 64-bit (2026-04-20), kernel 6.12.75, SSH confirmed
 - [ ] Physical cabling
 - [ ] Switch VLAN config
 - [ ] Pi networking (VLAN sub-interfaces)
