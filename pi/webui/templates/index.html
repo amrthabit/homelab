@@ -38,19 +38,21 @@
         </div>
     </section>
 
+    {% for vlan, items in leases.items() %}
     <section>
-        <h2>DHCP leases</h2>
+        <h2>{{ vlan }}</h2>
         <table>
             <thead><tr><th>hostname</th><th>IP</th><th>MAC</th></tr></thead>
             <tbody>
-            {% for l in leases %}
-                <tr><td>{{ l.hostname }}</td><td>{{ l.ip }}</td><td class="mono">{{ l.mac }}</td></tr>
+            {% for l in items %}
+                <tr><td>{{ l.hostname }}</td><td class="mono">{{ l.ip }}</td><td class="mono">{{ l.mac }}</td></tr>
             {% else %}
-                <tr><td colspan="3" class="empty">none</td></tr>
+                <tr><td colspan="3" class="empty">no devices</td></tr>
             {% endfor %}
             </tbody>
         </table>
     </section>
+    {% endfor %}
 
     <section>
         <h2>interfaces</h2>

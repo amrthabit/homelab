@@ -54,16 +54,23 @@ def sh(cmd: list[str]) -> str:
         return f"err: {e}"
 
 
-def get_dhcp_leases() -> list[dict]:
+def get_dhcp_leases() -> dict[str, list[dict]]:
+    """Returns leases grouped by VLAN: {'VLAN 20 (IoT)': [...], 'VLAN 30 (Trusted)': [...]}"""
     leases_path = Path("/var/lib/misc/dnsmasq.leases")
+    grouped = {"VLAN 20 (IoT)": [], "VLAN 30 (Trusted)": []}
     if not leases_path.exists():
-        return []
-    leases = []
+        return grouped
     for line in leases_path.read_text().splitlines():
         parts = line.split()
-        if len(parts) >= 4:
-            leases.append({"mac": parts[1], "ip": parts[2], "hostname": parts[3]})
-    return leases
+        if len(parts) < 4:
+            continue
+        ip = parts[2]
+        entry = {"mac": parts[1], "ip": ip, "hostname": parts[3] if parts[3] != "*" else "—"}
+        if ip.startswith("192.168.20."):
+            grouped["VLAN 20 (IoT)"].append(entry)
+        elif ip.startswith("192.168.30."):
+            grouped["VLAN 30 (Trusted)"].append(entry)
+    return grouped
 
 
 def get_interfaces() -> str:
