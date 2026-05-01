@@ -64,6 +64,10 @@
 - **Windows ARP cache** is sticky — `Remove-NetNeighbor -IPAddress X -Confirm:$false` (admin) when an IP changes hands.
 
 ## Verified
+- 2026-05-01: IoT WAN policy per-MAC verified.
+  - Nest Thermostat: works locally without WAN (HA local integration). Keep WAN OFF.
+  - Nest Hello (doorbell): requires WAN. Cloud-only, no local API. Toggle WAN ON.
+  - Conntrack flush after toggle changes recommended (`conntrack -F`) to drop stale connections.
 - 2026-05-01: HA OS on ThinkPad (192.168.30.86) on VLAN 30 reachable from laptop on VLAN 10 via static route on Windows: `route -p add 192.168.30.0 mask 255.255.255.0 192.168.2.10`. Pi forward rule added: `eth0 → eth0.30 accept` (commented as UI-toggleable for the future web UI).
 - 2026-05-01: dnsmasq DHCP+DNS live for VLAN 20 (192.168.20.50-200) and VLAN 30 (192.168.30.50-200), 12h leases. Bound only to eth0.20/eth0.30, never eth0 (Gigahub still owns VLAN 10 DHCP). Upstream DNS = Cloudflare 1.1.1.1 (placeholder until Pi-hole).
 - 2026-05-01: nftables + IP forwarding live (`pi/nftables.conf`). VLAN 30 → internet via NAT, VLAN 20 default-deny WAN, no IoT lateral to trusted. Persisted via `systemctl enable nftables`. Applied with a 60s safety auto-flush in case of lockout.
