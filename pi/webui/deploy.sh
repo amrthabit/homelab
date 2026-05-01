@@ -87,6 +87,13 @@ if changed "$WEBUI/homelab-poll.timer"; then
     mark "$WEBUI/homelab-poll.timer"
 fi
 
+if changed "$REPO_ROOT/pi/homelab-backup.service" || changed "$REPO_ROOT/pi/homelab-backup.timer"; then
+    step "backup units" bash -c "cp '$REPO_ROOT/pi/homelab-backup.service' '$REPO_ROOT/pi/homelab-backup.timer' /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now homelab-backup.timer >/dev/null"
+    mark "$REPO_ROOT/pi/homelab-backup.service"
+    mark "$REPO_ROOT/pi/homelab-backup.timer"
+    chmod +x "$REPO_ROOT/pi/backup.sh"
+fi
+
 # Skip ui restart if neither frontend (dist changed) nor backend changed
 NEED_RESTART=1
 if [ -n "$PREV_SHA" ] && [ "$NEED_BUILD" -eq 0 ]; then

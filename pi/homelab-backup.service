@@ -1,0 +1,9 @@
+[Unit]
+Description=Homelab daily backup to repo
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/opt/homelab/secrets.env
+ExecStart=/bin/bash /opt/homelab/pi/backup.sh
+ExecStartPost=/bin/bash -c "cd /opt/homelab && git add pi/backups && git diff --cached --quiet || git -c user.name=pi -c user.email=pi@homelab commit -q -m 'backup: $(date +%%Y-%%m-%%d)'"

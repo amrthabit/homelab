@@ -9,6 +9,7 @@ TL-SG108E managed switch → Pi 5 (bridge box) → ThinkPad/HA + OptiPlex + IoT.
 - [`CLAUDE.md`](./CLAUDE.md) — context for Claude sessions, file map, conventions
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — physical + software architecture
 - [`ROADMAP.md`](./ROADMAP.md) — features designed but not built
+- [`RECOVERY.md`](./RECOVERY.md) — disaster recovery for any device
 - [`pi/journal.md`](./pi/journal.md) — chronological build log
 - [`pi/baseline.md`](./pi/baseline.md) — Pi 5 fresh-install snapshot
 - [`thinkpad/baseline.md`](./thinkpad/baseline.md) — Home Assistant OS snapshot
