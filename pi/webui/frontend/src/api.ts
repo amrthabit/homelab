@@ -14,6 +14,15 @@ export async function getHistory(mac: string): Promise<HistoryPoint[]> {
   return r.json();
 }
 
+export type MetricPoint = { ts: number; value: number };
+export type MetricSeries = { key: string; hours: number; points: MetricPoint[] };
+
+export async function getMetric(key: string, hours = 24): Promise<MetricSeries> {
+  const r = await fetch(`${base}/metric/${encodeURIComponent(key)}?hours=${hours}`);
+  if (!r.ok) throw new Error(`metric: ${r.status}`);
+  return r.json();
+}
+
 export async function toggleKey(key: string): Promise<ToggleResult> {
   const r = await fetch(`${base}/toggle/${key}`, { method: "POST" });
   if (!r.ok) throw new Error(`toggle: ${r.status}`);

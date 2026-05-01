@@ -9,6 +9,7 @@ import { GigahubTable } from "./components/GigahubTable";
 import { WifiCard } from "./components/WifiCard";
 import { Activity } from "./components/Activity";
 import { Section } from "./components/Section";
+import { SystemCharts } from "./components/SystemCharts";
 
 const EMPTY_SNAPSHOT: Snapshot = {
   state: { vlan10_to_vlan30: false, vlan20_wan: false, iot_wan_macs: [], trusted_wan_blocked_macs: [] },
@@ -64,12 +65,13 @@ const App: Component = () => {
         </Show>
 
         <Section title="system" icon={<Cpu size={14} />}>
-          <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
             <Stat k="uptime" v={snap.stats.uptime} />
             <Stat k="load" v={snap.stats.load} />
             <Stat k="memory" v={`${snap.stats.mem_used_pct}% / ${snap.stats.mem_total_gb} GiB`} />
             <Stat k="temp" v={snap.stats.temp} />
           </div>
+          <SystemCharts />
         </Section>
 
         <Section title="toggles" icon={<Settings size={14} />}>

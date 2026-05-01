@@ -2,7 +2,16 @@ import { For, Show, createSignal, createResource, type Component } from "solid-j
 import type { Device, Vlan, State } from "../types";
 import { Sparkline, HourlyBars } from "./Sparkline";
 import { MiniToggle } from "./Toggle";
-import { getHistory, toggleIotWan, toggleTrustedWan } from "../api";
+import { Chart, deltaPerSecond } from "./Chart";
+import { getHistory, getMetric, toggleIotWan, toggleTrustedWan } from "../api";
+
+function formatRate(bytesPerSec: number): string {
+  const bps = bytesPerSec * 8;
+  if (bps < 1000) return `${bps.toFixed(0)} bps`;
+  if (bps < 1_000_000) return `${(bps / 1000).toFixed(1)} kbps`;
+  if (bps < 1_000_000_000) return `${(bps / 1_000_000).toFixed(2)} Mbps`;
+  return `${(bps / 1_000_000_000).toFixed(2)} Gbps`;
+}
 
 // Module-level expansion state — persists across SSE-driven re-renders + localStorage
 const STORAGE_KEY = "homelab.openMacs";
@@ -50,6 +59,9 @@ const DeviceRow: Component<{
 }> = (props) => {
   const open = () => openMacs().has(props.device.mac);
   const [history] = createResource(open, async (isOpen) => (isOpen ? getHistory(props.device.mac) : []));
+  const [tx] = createResource(open, async (isOpen) => (isOpen && props.device.wifi ? getMetric(`wifi.tx.${props.device.mac}`, 24) : null));
+  const [rx] = createResource(open, async (isOpen) => (isOpen && props.device.wifi ? getMetric(`wifi.rx.${props.device.mac}`, 24) : null));
+  const [signal] = createResource(open, async (isOpen) => (isOpen && props.device.wifi ? getMetric(`wifi.signal.${props.device.mac}`, 24) : null));
 
   const stored = () => props.state.iot_wan_macs.includes(props.device.mac);
   const blocked = () => props.state.trusted_wan_blocked_macs.includes(props.device.mac);
@@ -101,8 +113,39 @@ const DeviceRow: Component<{
                   <Sparkline data={props.device.spark} />
                 </div>
 
+                <Show when={props.device.wifi}>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="rounded border border-[var(--color-border)] p-2">
+                      <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">throughput tx (24h)</div>
+                      <Chart
+                        data={deltaPerSecond(tx()?.points ?? [])}
+                        color="var(--color-up)"
+                        formatY={formatRate}
+                        filled
+                      />
+                    </div>
+                    <div class="rounded border border-[var(--color-border)] p-2">
+                      <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">throughput rx (24h)</div>
+                      <Chart
+                        data={deltaPerSecond(rx()?.points ?? [])}
+                        color="var(--color-warn)"
+                        formatY={formatRate}
+                        filled
+                      />
+                    </div>
+                    <div class="rounded border border-[var(--color-border)] p-2">
+                      <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">signal (24h)</div>
+                      <Chart
+                        data={signal()?.points ?? []}
+                        color="var(--color-accent)"
+                        formatY={(v) => `${v.toFixed(0)} dBm`}
+                      />
+                    </div>
+                  </div>
+                </Show>
+
                 <div>
-                  <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">last 30 days · 1px = 1 hour</div>
+                  <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">uptime · last 30 days · 1px = 1 hour</div>
                   <div class="overflow-x-auto whitespace-nowrap max-w-full">
                     <Show
                       when={!history.loading}
