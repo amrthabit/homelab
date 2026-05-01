@@ -62,11 +62,7 @@ class WifiSsid(BaseModel):
     ssid: str
     bssid: str
     enabled: bool
-
-
-class WifiAp(BaseModel):
-    alias: str
-    enabled: bool
+    band: str
     client_count: int
 
 
@@ -74,7 +70,6 @@ class GigahubInfo(BaseModel):
     devices: list[GigahubDevice]
     radios: list[WifiRadio]
     ssids: list[WifiSsid]
-    aps: list[WifiAp]
     ts: int
     error: str | None
 

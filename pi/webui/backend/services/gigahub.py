@@ -12,7 +12,7 @@ _cache: dict = {"devices": [], "ts": 0, "error": None}
 _lock = asyncio.Lock()
 
 
-_cache.update({"radios": [], "ssids": [], "aps": []})
+_cache.update({"radios": [], "ssids": []})
 
 
 async def _fetch() -> dict:
@@ -55,25 +55,24 @@ async def _fetch() -> dict:
             for r in (radios_raw or [])
         ]
 
-        ssids = [
-            {
-                "alias": s.get("alias", ""),
-                "ssid": s.get("SSID") or "—",
+        # SSIDs and APs come back in matching order — pair by index.
+        ap_list = aps_raw or []
+        ssids = []
+        for i, s in enumerate(ssids_raw or []):
+            ap = ap_list[i] if i < len(ap_list) else {}
+            alias = s.get("alias", "")
+            band = "6 GHz" if "_6G" in alias else "5 GHz" if "_5G" in alias else "2.4 GHz"
+            ssids.append({
+                "alias": alias,
+                "ssid": s.get("SSID") or "-",
                 "bssid": s.get("BSSID") or "",
                 "enabled": bool(s.get("enable", False)),
-            }
-            for s in (ssids_raw or [])
-        ]
-
-        aps = [
-            {
-                "alias": a.get("alias", ""),
-                "enabled": bool(a.get("enable", False)),
-                "client_count": len(a.get("associated_devices", []) or []),
-            }
-            for a in (aps_raw or [])
-        ]
-        return {"devices": devices, "radios": radios, "ssids": ssids, "aps": aps}
+                "band": band,
+                "client_count": len(ap.get("associated_devices", []) or []),
+            })
+        # Sort: enabled first, then by SSID name, then by band
+        ssids.sort(key=lambda x: (not x["enabled"], x["ssid"].lower(), x["band"]))
+        return {"devices": devices, "radios": radios, "ssids": ssids}
 
 
 async def refresh() -> None:
@@ -92,7 +91,6 @@ def cached() -> dict:
         "devices": list(_cache["devices"]),
         "radios": list(_cache.get("radios", [])),
         "ssids": list(_cache.get("ssids", [])),
-        "aps": list(_cache.get("aps", [])),
         "ts": _cache["ts"],
         "error": _cache["error"],
     }

@@ -69,11 +69,7 @@ export type WifiSsid = {
   ssid: string;
   bssid: string;
   enabled: boolean;
-};
-
-export type WifiAp = {
-  alias: string;
-  enabled: boolean;
+  band: string;
   client_count: number;
 };
 
@@ -81,7 +77,6 @@ export type GigahubInfo = {
   devices: GigahubDevice[];
   radios: WifiRadio[];
   ssids: WifiSsid[];
-  aps: WifiAp[];
   ts: number;
   error: string | null;
 };
