@@ -91,21 +91,24 @@ async def capture(page_label: str) -> None:
                 continue
 
         await page.wait_for_timeout(2000)
+        from urllib.parse import unquote
         print(f"\n[probe] {len(captured)} json-req calls captured\n" + "=" * 60)
         for i, c in enumerate(captured):
             try:
-                body = json.loads(c["body"]) if c["body"] else {}
+                raw = c["body"] or ""
+                if raw.startswith("req="):
+                    raw = unquote(raw[4:])
+                body = json.loads(raw)
                 actions = body.get("request", {}).get("actions", [])
                 for a in actions:
-                    print(f"--- req {i} action {a.get('id')} method={a.get('method')}")
+                    line = f"req {i:>2}.act {a.get('id')}: {a.get('method'):<24}"
                     if "xpath" in a:
-                        print(f"    xpath={a['xpath']}")
-                    if "options" in a:
-                        print(f"    options={a['options']}")
+                        line += f" xpath={a['xpath']}"
                     if "parameters" in a:
-                        print(f"    parameters={json.dumps(a['parameters'])[:200]}")
-            except Exception:
-                print(f"--- req {i} (raw): {c['body'][:300]}")
+                        line += f" params={json.dumps(a['parameters'])[:160]}"
+                    print(line)
+            except Exception as e:
+                print(f"req {i} parse-err: {e}")
 
         await browser.close()
 
