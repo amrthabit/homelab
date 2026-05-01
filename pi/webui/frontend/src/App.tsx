@@ -64,13 +64,11 @@ const App: Component = () => {
           </div>
         </Show>
 
-        <Section title="system" icon={<Cpu size={14} />}>
-          <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
-            <Stat k="uptime" v={snap.stats.uptime} />
-            <Stat k="load" v={snap.stats.load} />
-            <Stat k="memory" v={`${snap.stats.mem_used_pct}% / ${snap.stats.mem_total_gb} GiB`} />
-            <Stat k="temp" v={snap.stats.temp} />
-          </div>
+        <Section
+          title="system"
+          icon={<Cpu size={14} />}
+          right={<span class="text-xs text-[var(--color-muted)] font-mono">{snap.stats.uptime}</span>}
+        >
           <SystemCharts />
         </Section>
 

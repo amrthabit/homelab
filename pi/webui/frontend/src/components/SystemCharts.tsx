@@ -1,8 +1,9 @@
 import { createResource, type Component } from "solid-js";
-import { Chart } from "./Chart";
+import { Chart, aggregateMax } from "./Chart";
 import { getMetric } from "../api";
 
 const fetchMetric = (key: string) => () => getMetric(key, 24);
+const BUCKET_SEC = 300; // 5-minute buckets
 
 export const SystemCharts: Component = () => {
   const [load] = createResource(fetchMetric("system.load_pct"));
@@ -12,9 +13,9 @@ export const SystemCharts: Component = () => {
   return (
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div class="rounded border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-        <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">load (1m)</div>
+        <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">load · max per 5m</div>
         <Chart
-          data={load()?.points ?? []}
+          data={aggregateMax(load()?.points ?? [], BUCKET_SEC)}
           color="var(--color-accent)"
           yMin={0}
           yMax={100}
@@ -23,9 +24,9 @@ export const SystemCharts: Component = () => {
         />
       </div>
       <div class="rounded border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-        <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">memory %</div>
+        <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">memory · max per 5m</div>
         <Chart
-          data={mem()?.points ?? []}
+          data={aggregateMax(mem()?.points ?? [], BUCKET_SEC)}
           color="var(--color-warn)"
           yMin={0}
           yMax={100}
@@ -34,9 +35,9 @@ export const SystemCharts: Component = () => {
         />
       </div>
       <div class="rounded border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-        <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">CPU temp</div>
+        <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">CPU temp · max per 5m</div>
         <Chart
-          data={temp()?.points ?? []}
+          data={aggregateMax(temp()?.points ?? [], BUCKET_SEC)}
           color="var(--color-low)"
           formatY={(v) => `${v.toFixed(1)}°C`}
           filled

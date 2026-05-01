@@ -91,6 +91,18 @@ export const Chart: Component<Props> = (props) => {
   );
 };
 
+/** Bucket points by `bucketSec`, keeping the max value in each bucket. */
+export function aggregateMax(points: ChartPoint[], bucketSec: number): ChartPoint[] {
+  if (!points.length) return [];
+  const buckets = new Map<number, number>();
+  for (const p of points) {
+    const k = Math.floor(p.ts / bucketSec) * bucketSec;
+    const cur = buckets.get(k);
+    if (cur === undefined || p.value > cur) buckets.set(k, p.value);
+  }
+  return [...buckets.entries()].sort(([a], [b]) => a - b).map(([ts, value]) => ({ ts, value }));
+}
+
 /** Compute delta-per-second from cumulative byte counters. */
 export function deltaPerSecond(points: ChartPoint[]): ChartPoint[] {
   if (points.length < 2) return [];
