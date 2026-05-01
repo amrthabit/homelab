@@ -90,16 +90,7 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
       </Show>
 
       <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-        <table class="w-full table-fixed">
-          <colgroup>
-            <col class="w-32 sm:w-44" />
-            <col class="w-0 sm:w-28" />
-            <col class="w-0 sm:w-32" />
-            <col class="w-0 sm:w-20" />
-            <col />
-            <col />
-            <col class="w-20" />
-          </colgroup>
+        <table class="w-full table-auto">
           <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
             <tr>
               <th class="px-3 py-2 text-left">hostname</th>
@@ -118,16 +109,16 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
               <For each={devices()}>
                 {(d) => (
                   <tr class={d.active ? "" : "opacity-50"}>
-                    <td class="px-3 py-2 truncate">{d.hostname}</td>
-                    <td class="px-3 py-2 font-mono text-sm hidden sm:table-cell truncate">{d.ip || "-"}</td>
-                    <td class="px-3 py-2 font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell truncate">{d.mac}</td>
+                    <td class="px-3 py-2 max-w-[12rem] truncate">{d.hostname}</td>
+                    <td class="px-3 py-2 font-mono text-sm hidden sm:table-cell whitespace-nowrap">{d.ip || "-"}</td>
+                    <td class="px-3 py-2 font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell whitespace-nowrap">{d.mac}</td>
                     <td class="px-3 py-2 text-right font-mono text-xs hidden sm:table-cell">
                       {d.wifi ? <SignalCell dbm={d.wifi.signal_dbm} /> : <span class="text-[var(--color-muted)]">-</span>}
                     </td>
-                    <td class="px-2 py-1 hidden sm:table-cell">
+                    <td class="px-2 py-1 hidden sm:table-cell w-1/3 min-w-[8rem]">
                       <BarCell value={d.wifi?.bytes_tx || 0} max={maxTx()} color="up" />
                     </td>
-                    <td class="px-2 py-1 hidden sm:table-cell">
+                    <td class="px-2 py-1 hidden sm:table-cell w-1/3 min-w-[8rem]">
                       <BarCell value={d.wifi?.bytes_rx || 0} max={maxRx()} color="warn" />
                     </td>
                     <td class="pl-1 pr-2 py-2 text-right">
