@@ -5,12 +5,14 @@ import { getSnapshot, subscribeSnapshot, toggleKey } from "./api";
 import { ToggleCard } from "./components/Toggle";
 import { DeviceTable } from "./components/DeviceTable";
 import { GigahubTable } from "./components/GigahubTable";
+import { WifiCard } from "./components/WifiCard";
+import { Activity } from "./components/Activity";
 
 const EMPTY_SNAPSHOT: Snapshot = {
   state: { vlan10_to_vlan30: false, vlan20_wan: false, iot_wan_macs: [], trusted_wan_blocked_macs: [] },
   stats: { uptime: "", load: "", mem_used_pct: 0, mem_total_gb: 0, temp: "" },
   vlans: [],
-  gigahub: { devices: [], ts: 0, error: null },
+  gigahub: { devices: [], radios: [], ssids: [], aps: [], ts: 0, error: null },
   interfaces: "",
   routes: "",
   firewall: "",
@@ -89,6 +91,10 @@ const App: Component = () => {
         <For each={snap.vlans}>
           {(vlan) => <DeviceTable vlan={vlan} state={snap.state} />}
         </For>
+
+        <WifiCard info={snap.gigahub} />
+
+        <Activity devices={snap.gigahub.devices} />
 
         <GigahubTable info={snap.gigahub} />
 

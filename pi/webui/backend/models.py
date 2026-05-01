@@ -41,13 +41,40 @@ class GigahubDevice(BaseModel):
     mac: str
     ip: str
     hostname: str
-    interface: str  # "WiFi" or "Ethernet"
+    interface: str
     active: bool
     last_seen: str
 
 
+class WifiRadio(BaseModel):
+    alias: str
+    band: str
+    channel: int
+    bandwidth: str
+    power_pct: int
+    max_bit_rate: int
+    status: str
+    enabled: bool
+
+
+class WifiSsid(BaseModel):
+    alias: str
+    ssid: str
+    bssid: str
+    enabled: bool
+
+
+class WifiAp(BaseModel):
+    alias: str
+    enabled: bool
+    client_count: int
+
+
 class GigahubInfo(BaseModel):
     devices: list[GigahubDevice]
+    radios: list[WifiRadio]
+    ssids: list[WifiSsid]
+    aps: list[WifiAp]
     ts: int
     error: str | None
 

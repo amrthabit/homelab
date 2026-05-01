@@ -53,8 +53,35 @@ export type GigahubDevice = {
   last_seen: string;
 };
 
+export type WifiRadio = {
+  alias: string;
+  band: string;
+  channel: number;
+  bandwidth: string;
+  power_pct: number;
+  max_bit_rate: number;
+  status: string;
+  enabled: boolean;
+};
+
+export type WifiSsid = {
+  alias: string;
+  ssid: string;
+  bssid: string;
+  enabled: boolean;
+};
+
+export type WifiAp = {
+  alias: string;
+  enabled: boolean;
+  client_count: number;
+};
+
 export type GigahubInfo = {
   devices: GigahubDevice[];
+  radios: WifiRadio[];
+  ssids: WifiSsid[];
+  aps: WifiAp[];
   ts: number;
   error: string | null;
 };
