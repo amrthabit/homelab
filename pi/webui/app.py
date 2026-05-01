@@ -121,24 +121,25 @@ def db_query(query: str, args: tuple = ()) -> list[tuple]:
     return rows
 
 
-def sparkline_24h(mac: str) -> dict:
-    """Return last 24h aggregated to 24 hourly buckets: {'pct': [0..100, ...], 'avg': float}."""
+SPARK_HOURS = 48
+
+def sparkline(mac: str) -> dict:
+    """Return last SPARK_HOURS aggregated to hourly buckets, 1 bar = 1 hour."""
     now = int(time.time())
-    start = now - 86400
+    start = now - SPARK_HOURS * 3600
     rows = db_query(
         "SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts",
         (mac, start),
     )
-    buckets = [None] * 24
-    bucket_counts = [0] * 24
-    bucket_ups = [0] * 24
+    bucket_counts = [0] * SPARK_HOURS
+    bucket_ups = [0] * SPARK_HOURS
     for ts, up in rows:
         idx = int((ts - start) / 3600)
-        if 0 <= idx < 24:
+        if 0 <= idx < SPARK_HOURS:
             bucket_counts[idx] += 1
             bucket_ups[idx] += up
     pcts = []
-    for i in range(24):
+    for i in range(SPARK_HOURS):
         if bucket_counts[i] == 0:
             pcts.append(None)
         else:
@@ -178,7 +179,7 @@ def index():
     # Attach sparkline data to each device
     for vlan_items in leases.values():
         for d in vlan_items:
-            d["spark"] = sparkline_24h(d["mac"])
+            d["spark"] = sparkline(d["mac"])
     return render_template(
         "index.html",
         state=state,

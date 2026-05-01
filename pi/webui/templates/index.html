@@ -57,7 +57,7 @@
                 <th>hostname</th>
                 <th class="hide-mobile">IP</th>
                 <th class="hide-mobile">MAC</th>
-                <th class="hide-mobile">24h</th>
+                <th class="hide-mobile">48h</th>
                 <th>{% if 'IoT' in vlan or 'Trusted' in vlan %}WAN{% endif %}</th>
             </tr></thead>
             <tbody>
@@ -67,7 +67,7 @@
                     <td class="mono hide-mobile">{{ l.ip }}</td>
                     <td class="mono small hide-mobile">{{ l.mac }}</td>
                     <td class="hide-mobile">
-                        <span class="spark" title="avg uptime 24h: {{ l.spark.avg if l.spark.avg is not none else '—' }}%, samples: {{ l.spark.samples }}">
+                        <span class="spark" title="avg uptime 48h: {{ l.spark.avg if l.spark.avg is not none else '—' }}%, samples: {{ l.spark.samples }}">
                             {% for p in l.spark.buckets %}
                                 <i class="bar {% if p is none %}gap{% elif p == 100 %}full{% elif p >= 50 %}mid{% elif p > 0 %}low{% else %}off{% endif %}"></i>
                             {% endfor %}
@@ -103,7 +103,7 @@
                             <div><span class="k">IP</span><span class="v mono">{{ l.ip }}</span></div>
                             <div><span class="k">MAC</span><span class="v mono">{{ l.mac }}</span></div>
                             <div>
-                                <span class="k">24h</span>
+                                <span class="k">48h</span>
                                 <span class="spark" title="avg uptime 24h: {{ l.spark.avg if l.spark.avg is not none else '—' }}%">
                                     {% for p in l.spark.buckets %}
                                         <i class="bar {% if p is none %}gap{% elif p == 100 %}full{% elif p >= 50 %}mid{% elif p > 0 %}low{% else %}off{% endif %}"></i>

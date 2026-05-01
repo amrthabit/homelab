@@ -16,7 +16,7 @@ table.devices { width: 100%; border-collapse: collapse; background: #161b22; bor
 .devices col.hostname { width: auto; }
 .devices col.ip { width: 130px; }
 .devices col.mac { width: 165px; }
-.devices col.spark { width: 145px; }
+.devices col.spark { width: 80px; }
 .devices col.wan { width: 80px; }
 .devices th { background: #1c2128; font-size: 0.8rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.05em; }
 .devices tr.device-row { cursor: pointer; transition: background 0.1s; }
@@ -30,8 +30,8 @@ table.devices { width: 100%; border-collapse: collapse; background: #161b22; bor
 .spark.spark-90d .bar { width: 1px; }
 .history-legend { color: #6e7681; font-size: 0.7rem; margin-top: 0.4rem; }
 
-.spark { display: inline-flex; align-items: stretch; gap: 1px; height: 20px; }
-.spark .bar { display: inline-block; width: 5px; height: 100%; border-radius: 1px; }
+.spark { display: inline-flex; align-items: stretch; gap: 0; height: 22px; }
+.spark .bar { display: inline-block; width: 1px; height: 100%; }
 .full, .spark .bar.full { background: #2ea043; }
 .mid, .spark .bar.mid { background: #d29922; }
 .low, .spark .bar.low { background: #f0883e; }
