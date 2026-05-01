@@ -13,6 +13,9 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
     if (f === "wired") list = list.filter((d) => d.interface === "Ethernet" && d.active);
     return [...list].sort((a, b) => {
       if (a.active !== b.active) return a.active ? -1 : 1;
+      const usageA = (a.wifi?.bytes_tx || 0) + (a.wifi?.bytes_rx || 0);
+      const usageB = (b.wifi?.bytes_tx || 0) + (b.wifi?.bytes_rx || 0);
+      if (usageA !== usageB) return usageB - usageA;
       return (a.hostname || "").localeCompare(b.hostname || "");
     });
   });
@@ -42,9 +45,9 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
           <colgroup>
             <col />
             <col class="w-0 sm:w-32" />
-            <col class="w-0 sm:w-40" />
-            <col class="w-0 sm:w-24" />
-            <col class="w-0 sm:w-28" />
+            <col class="w-0 sm:w-36" />
+            <col class="w-0 sm:w-20" />
+            <col class="w-0 sm:w-32" />
             <col class="w-20" />
           </colgroup>
           <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
@@ -53,7 +56,7 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
               <th class="px-3 py-2 text-left hidden sm:table-cell">IP</th>
               <th class="px-3 py-2 text-left hidden sm:table-cell">MAC</th>
               <th class="px-3 py-2 text-right hidden sm:table-cell">signal</th>
-              <th class="px-3 py-2 text-right hidden sm:table-cell">link rate</th>
+              <th class="px-3 py-2 text-right hidden sm:table-cell">data tx/rx</th>
               <th class="px-3 py-2 text-right">link</th>
             </tr>
           </thead>
@@ -71,7 +74,9 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
                       {d.wifi ? <SignalCell dbm={d.wifi.signal_dbm} /> : <span class="text-[var(--color-muted)]">-</span>}
                     </td>
                     <td class="px-3 py-2 text-right font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell">
-                      {d.wifi ? `${(d.wifi.rx_kbps / 1000).toFixed(0)}/${(d.wifi.tx_kbps / 1000).toFixed(0)} Mbps` : "-"}
+                      {d.wifi && (d.wifi.bytes_tx + d.wifi.bytes_rx > 0)
+                        ? `${formatBytes(d.wifi.bytes_tx)} / ${formatBytes(d.wifi.bytes_rx)}`
+                        : "-"}
                     </td>
                     <td class="px-3 py-2 text-right text-xs">
                       <span class={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono ${
@@ -94,6 +99,13 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
     </div>
   );
 };
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  return `${(n / 1024 ** 3).toFixed(2)} GB`;
+}
 
 const SignalCell: Component<{ dbm: number }> = (p) => {
   const colour = () => {
