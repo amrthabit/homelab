@@ -13,11 +13,11 @@ pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; paddin
 table.devices { width: 100%; border-collapse: collapse; background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; table-layout: fixed; }
 .devices th, .devices td { padding: 0.55rem 1rem; text-align: left; border-bottom: 1px solid #30363d; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Consistent column widths across all device tables for inter-table alignment */
-.devices col.hostname { width: auto; }
-.devices col.ip { width: 130px; }
+.devices col.hostname { width: 160px; }
+.devices col.ip { width: 145px; }
 .devices col.mac { width: 165px; }
-.devices col.spark { width: 80px; }
-.devices col.wan { width: 80px; }
+.devices col.spark { width: auto; }
+.devices col.wan { width: 72px; }
 .devices th { background: #1c2128; font-size: 0.8rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.05em; }
 .devices tr.device-row { cursor: pointer; transition: background 0.1s; }
 .devices tr.device-row:hover { background: #1c2128; }
