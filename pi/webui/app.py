@@ -149,7 +149,7 @@ def sparkline_24h(mac: str) -> dict:
 
 
 def history_90d(mac: str) -> list[dict]:
-    """Return last 90 days aggregated to daily buckets."""
+    """Return last 90 days aggregated to hourly buckets (2160 entries)."""
     now = int(time.time())
     start = now - 90 * 86400
     rows = db_query(
@@ -158,16 +158,16 @@ def history_90d(mac: str) -> list[dict]:
     )
     buckets = {}
     for ts, up in rows:
-        day = ts // 86400
-        b = buckets.setdefault(day, {"up": 0, "total": 0})
+        h = ts // 3600
+        b = buckets.setdefault(h, {"up": 0, "total": 0})
         b["up"] += up
         b["total"] += 1
-    today = now // 86400
+    cur_h = now // 3600
     out = []
-    for day in range(today - 89, today + 1):
-        b = buckets.get(day)
+    for h in range(cur_h - 90 * 24 + 1, cur_h + 1):
+        b = buckets.get(h)
         pct = round(100 * b["up"] / b["total"]) if b else None
-        out.append({"day": day, "pct": pct, "date": time.strftime("%Y-%m-%d", time.gmtime(day * 86400))})
+        out.append({"h": h, "pct": pct, "ts": h * 3600})
     return out
 
 

@@ -98,7 +98,7 @@
                     {% endif %}
                 </tr>
                 <tr class="history-row" data-mac-target="{{ l.mac }}" hidden>
-                    <td colspan="6">
+                    <td colspan="5">
                         <div class="mobile-only device-detail">
                             <div><span class="k">IP</span><span class="v mono">{{ l.ip }}</span></div>
                             <div><span class="k">MAC</span><span class="v mono">{{ l.mac }}</span></div>
@@ -153,21 +153,28 @@ document.querySelectorAll('.device-row').forEach(row => {
         try {
             const res = await fetch('/api/history/' + encodeURIComponent(mac));
             const data = await res.json();
-            // Keep mobile-only detail block, replace only the loading text
             const loading = cell.querySelector('.history-loading');
             if (loading) loading.remove();
-            const wrap = document.createElement('div');
-            wrap.className = 'history-grid';
+            const scroller = document.createElement('div');
+            scroller.className = 'history-scroller';
+            const spark = document.createElement('span');
+            spark.className = 'spark spark-90d';
             data.forEach(d => {
-                const cell2 = document.createElement('span');
-                cell2.className = 'history-cell ' + (d.pct === null ? 'gap' : d.pct === 100 ? 'full' : d.pct >= 50 ? 'mid' : 'low');
-                cell2.title = `${d.date}: ${d.pct === null ? 'no data' : d.pct + '%'}`;
-                wrap.appendChild(cell2);
+                const bar = document.createElement('i');
+                let cls = 'gap';
+                if (d.pct !== null) {
+                    cls = d.pct === 100 ? 'full' : d.pct >= 50 ? 'mid' : d.pct > 0 ? 'low' : 'off';
+                }
+                bar.className = 'bar ' + cls;
+                const date = new Date(d.ts * 1000).toISOString().replace('T', ' ').substring(0, 13) + ':00Z';
+                bar.title = `${date}: ${d.pct === null ? 'no data' : d.pct + '%'}`;
+                spark.appendChild(bar);
             });
-            cell.appendChild(wrap);
+            scroller.appendChild(spark);
+            cell.appendChild(scroller);
             const legend = document.createElement('div');
             legend.className = 'history-legend';
-            legend.textContent = '90 days — each cell = 1 day, click row again to collapse';
+            legend.textContent = '90 days — each bar = 1 hour, scroll horizontally';
             cell.appendChild(legend);
         } catch (err) {
             cell.innerHTML = '<div class="history-loading">error: ' + err + '</div>';
