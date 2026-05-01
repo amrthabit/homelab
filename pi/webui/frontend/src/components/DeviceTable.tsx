@@ -4,12 +4,23 @@ import { Sparkline, HourlyBars } from "./Sparkline";
 import { MiniToggle } from "./Toggle";
 import { getHistory, toggleIotWan, toggleTrustedWan } from "../api";
 
+// Module-level expansion state — persists across SSE-driven re-renders
+const [openMacs, setOpenMacs] = createSignal<Set<string>>(new Set());
+
+function toggleOpen(mac: string) {
+  setOpenMacs((prev) => {
+    const next = new Set(prev);
+    next.has(mac) ? next.delete(mac) : next.add(mac);
+    return next;
+  });
+}
+
 const DeviceRow: Component<{
   device: Device;
   vlan: Vlan;
   state: State;
 }> = (props) => {
-  const [open, setOpen] = createSignal(false);
+  const open = () => openMacs().has(props.device.mac);
   const [history] = createResource(open, async (isOpen) => {
     if (!isOpen) return [];
     return getHistory(props.device.mac);
@@ -30,7 +41,7 @@ const DeviceRow: Component<{
       <tr
         class="cursor-pointer transition hover:bg-[#1c2128] data-[open=true]:bg-[#1c2128]"
         attr:data-open={open() ? "true" : "false"}
-        onClick={() => setOpen(!open())}
+        onClick={() => toggleOpen(props.device.mac)}
       >
         <td class="px-3 py-2 truncate">{props.device.hostname}</td>
         <td class="px-3 py-2 font-mono text-sm hidden sm:table-cell">{props.device.ip}</td>
