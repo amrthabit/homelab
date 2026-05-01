@@ -18,6 +18,10 @@
 </header>
 
 <main>
+    {% if state.vlan20_wan %}
+    <div class="banner">⚠ Blanket VLAN 20 WAN is ON — all IoT devices reach the internet regardless of per-device toggle. Per-device states are preserved; turn blanket OFF to apply them.</div>
+    {% endif %}
+
     <section>
         <h2>toggles</h2>
         <div class="toggle-grid">
@@ -50,10 +54,13 @@
                     <td class="mono">{{ l.ip }}</td>
                     <td class="mono">{{ l.mac }}</td>
                     {% if 'IoT' in vlan %}
+                    {% set stored = l.mac in iot_wan_macs %}
+                    {% set effective = state.vlan20_wan or stored %}
                     <td>
                         <form action="{{ url_for('toggle_iot_wan', mac=l.mac) }}" method="post" style="margin:0">
-                            <button class="mini-toggle {% if l.mac in iot_wan_macs %}on{% else %}off{% endif %}" type="submit">
-                                {{ 'ON' if l.mac in iot_wan_macs else 'OFF' }}
+                            <button class="mini-toggle {% if effective %}on{% else %}off{% endif %} {% if state.vlan20_wan %}forced{% endif %}" type="submit"
+                                    title="{% if state.vlan20_wan %}forced ON by blanket; stored: {{ 'ON' if stored else 'OFF' }}{% endif %}">
+                                {{ 'ON' if effective else 'OFF' }}{% if state.vlan20_wan and not stored %}*{% endif %}
                             </button>
                         </form>
                     </td>
