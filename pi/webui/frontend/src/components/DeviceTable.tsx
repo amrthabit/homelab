@@ -62,8 +62,8 @@ const DeviceRow: Component<{
       </tr>
       <Show when={open()}>
         <tr class="bg-[var(--color-bg)]">
-          <td colspan="5" class="px-3 py-3 align-top">
-            <div class="space-y-3">
+          <td colspan="5" class="px-3 py-3 align-top max-w-0">
+            <div class="space-y-3 min-w-0">
               <div class="sm:hidden grid gap-2 pb-3 border-b border-[var(--color-border)]">
                 <Field label="IP" value={props.device.ip} mono />
                 <Field label="MAC" value={props.device.mac} mono />
@@ -71,7 +71,7 @@ const DeviceRow: Component<{
                   <Sparkline data={props.device.spark} />
                 </Field>
               </div>
-              <div class="overflow-x-auto -mx-3 px-3">
+              <div class="overflow-x-auto whitespace-nowrap -mx-3 px-3 max-w-full">
                 <Show when={!history.loading} fallback={<div class="text-xs text-[var(--color-muted)]">loading…</div>}>
                   <Show when={(history() ?? []).length > 0}>
                     <HourlyBars buckets={(history() ?? []).map((p) => ({ pct: p.pct, ts: p.ts }))} />
@@ -97,7 +97,7 @@ export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
   <section class="mb-8">
     <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">{props.vlan.name}</h2>
     <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-      <table class="w-full">
+      <table class="w-full table-fixed">
         <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
           <tr>
             <th class="px-3 py-2 text-left">hostname</th>
