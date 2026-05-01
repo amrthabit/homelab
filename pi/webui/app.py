@@ -149,10 +149,12 @@ def sparkline(mac: str) -> dict:
     return {"buckets": pcts, "avg": avg, "samples": len(rows)}
 
 
-def history_90d(mac: str) -> list[dict]:
-    """Return last 90 days aggregated to hourly buckets (2160 entries)."""
+HISTORY_DAYS = 30
+
+def history(mac: str) -> list[dict]:
+    """Return last HISTORY_DAYS aggregated to hourly buckets."""
     now = int(time.time())
-    start = now - 90 * 86400
+    start = now - HISTORY_DAYS * 86400
     rows = db_query(
         "SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts",
         (mac, start),
@@ -165,7 +167,7 @@ def history_90d(mac: str) -> list[dict]:
         b["total"] += 1
     cur_h = now // 3600
     out = []
-    for h in range(cur_h - 90 * 24 + 1, cur_h + 1):
+    for h in range(cur_h - HISTORY_DAYS * 24 + 1, cur_h + 1):
         b = buckets.get(h)
         pct = round(100 * b["up"] / b["total"]) if b else None
         out.append({"h": h, "pct": pct, "ts": h * 3600})
@@ -195,7 +197,7 @@ def index():
 
 @app.route("/api/history/<path:mac>")
 def api_history(mac):
-    return jsonify(history_90d(mac))
+    return jsonify(history(mac))
 
 
 @app.route("/toggle/<key>", methods=["POST"])

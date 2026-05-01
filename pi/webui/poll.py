@@ -7,7 +7,7 @@ from pathlib import Path
 
 DB = Path("/var/lib/homelab/uptime.db")
 LEASES = Path("/var/lib/misc/dnsmasq.leases")
-RETAIN_DAYS = 90
+RETAIN_DAYS = 30
 
 # Devices not in dnsmasq leases (static / external)
 STATIC_DEVICES = [
