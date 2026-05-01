@@ -25,7 +25,22 @@ changed() {
 }
 mark() { cp "$1" "$STAMP_DIR/$(basename "$1")"; }
 
+PREV_SHA=$(cat "$STAMP_DIR/.last_deployed_sha" 2>/dev/null || echo "")
 step "git pull" git -C "$REPO_ROOT" pull --ff-only -q
+
+CUR_SHA=$(git -C "$REPO_ROOT" rev-parse --short HEAD)
+BRANCH=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)
+SUBJECT=$(git -C "$REPO_ROOT" log -1 --pretty=%s)
+echo "[deploy] HEAD                    $BRANCH @ $CUR_SHA  $SUBJECT"
+if [ -n "$PREV_SHA" ] && [ "$PREV_SHA" != "$CUR_SHA" ]; then
+    NCOMMITS=$(git -C "$REPO_ROOT" rev-list --count "$PREV_SHA..HEAD" 2>/dev/null || echo "?")
+    NFILES=$(git -C "$REPO_ROOT" diff --name-only "$PREV_SHA" HEAD 2>/dev/null | wc -l)
+    echo "[deploy] since last deploy       $NCOMMITS commits, $NFILES files changed (was $PREV_SHA)"
+elif [ -z "$PREV_SHA" ]; then
+    echo "[deploy] (first deploy on this Pi)"
+else
+    echo "[deploy] no new commits"
+fi
 
 [ -d "$WEBUI/venv" ] || python3 -m venv "$WEBUI/venv"
 if changed "$WEBUI/backend/requirements.txt"; then
@@ -66,4 +81,5 @@ fi
 
 step "ui restart" systemctl restart homelab-ui
 
-printf "[deploy] %-22s %2ds — http://%s\n" "TOTAL" "$(($(date +%s) - START))" "$(hostname -I | awk '{print $1}')"
+echo "$CUR_SHA" > "$STAMP_DIR/.last_deployed_sha"
+printf "[deploy] %-22s %2ds — http://%s  (sha %s)\n" "TOTAL" "$(($(date +%s) - START))" "$(hostname -I | awk '{print $1}')" "$CUR_SHA"
