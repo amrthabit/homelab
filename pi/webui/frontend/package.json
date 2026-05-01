@@ -11,7 +11,8 @@
     "gen-types": "openapi-typescript http://192.168.2.10/openapi.json -o src/api-types.ts"
   },
   "dependencies": {
-    "solid-js": "^1.9.3"
+    "solid-js": "^1.9.3",
+    "lucide-solid": "^0.469.0"
   },
   "devDependencies": {
     "vite-plugin-solid": "^2.11.0",

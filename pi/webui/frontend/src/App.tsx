@@ -1,5 +1,6 @@
 import { createSignal, onCleanup, onMount, For, Show, type Component } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
+import { Activity as ActivityIcon, AlertTriangle, Cpu, Network, Router, Settings, Wifi } from "lucide-solid";
 import type { Snapshot } from "./types";
 import { getSnapshot, subscribeSnapshot, toggleKey } from "./api";
 import { ToggleCard } from "./components/Toggle";
@@ -7,6 +8,7 @@ import { DeviceTable } from "./components/DeviceTable";
 import { GigahubTable } from "./components/GigahubTable";
 import { WifiCard } from "./components/WifiCard";
 import { Activity } from "./components/Activity";
+import { Section } from "./components/Section";
 
 const EMPTY_SNAPSHOT: Snapshot = {
   state: { vlan10_to_vlan30: false, vlan20_wan: false, iot_wan_macs: [], trusted_wan_blocked_macs: [] },
@@ -38,7 +40,6 @@ const App: Component = () => {
   const handleToggle = async (key: string) => {
     try {
       const res = await toggleKey(key);
-      // Apply optimistic state update; SSE will reconcile
       setSnap("state", reconcile(res.state));
     } catch (e) {
       setError(String(e));
@@ -48,33 +49,33 @@ const App: Component = () => {
   return (
     <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       <Show when={error()}>
-        <div class="border border-[var(--color-down)] bg-[#2d1010] text-[var(--color-down)] rounded-md px-4 py-2 text-sm">
+        <div class="border border-[var(--color-down)] bg-[#2d1010] text-[var(--color-down)] rounded-md px-4 py-2 text-sm flex items-center gap-2">
+          <AlertTriangle size={16} />
           {error()}
         </div>
       </Show>
 
-      <Show when={loaded()} fallback={<div class="text-[var(--color-muted)]">loading…</div>}>
+      <Show when={loaded()} fallback={<div class="text-[var(--color-muted)]">loading...</div>}>
         <Show when={snap.state.vlan20_wan}>
-          <div class="border border-[var(--color-low)] bg-[#2d2010] text-[var(--color-low)] rounded-md px-4 py-3 text-sm">
-            ⚠ Blanket VLAN 20 WAN is ON — all IoT devices reach the internet regardless of per-device toggle. Per-device states are preserved; turn blanket OFF to apply them.
+          <div class="border border-[var(--color-low)] bg-[#2d2010] text-[var(--color-low)] rounded-md px-4 py-3 text-sm flex items-start gap-2">
+            <AlertTriangle size={16} class="mt-0.5 shrink-0" />
+            <span>Blanket VLAN 20 WAN is ON — all IoT devices reach the internet regardless of per-device toggle. Per-device states are preserved; turn blanket OFF to apply them.</span>
           </div>
         </Show>
 
-        <section>
-          <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">system</h2>
+        <Section title="system" icon={<Cpu size={14} />}>
           <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Stat k="uptime" v={snap.stats.uptime} />
             <Stat k="load" v={snap.stats.load} />
             <Stat k="memory" v={`${snap.stats.mem_used_pct}% / ${snap.stats.mem_total_gb} GiB`} />
             <Stat k="temp" v={snap.stats.temp} />
           </div>
-        </section>
+        </Section>
 
-        <section>
-          <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">toggles</h2>
+        <Section title="toggles" icon={<Settings size={14} />}>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <ToggleCard
-              label="VLAN 10 → VLAN 30"
+              label="VLAN 10 -> VLAN 30"
               desc="laptop access to trusted services (HA, Proxmox)"
               on={snap.state.vlan10_to_vlan30}
               onClick={() => handleToggle("vlan10_to_vlan30")}
@@ -86,26 +87,39 @@ const App: Component = () => {
               onClick={() => handleToggle("vlan20_wan")}
             />
           </div>
-        </section>
+        </Section>
 
         <For each={snap.vlans}>
-          {(vlan) => <DeviceTable vlan={vlan} state={snap.state} />}
+          {(vlan) => (
+            <Section title={vlan.name} icon={<Network size={14} />}>
+              <DeviceTable vlan={vlan} state={snap.state} />
+            </Section>
+          )}
         </For>
 
-        <WifiCard info={snap.gigahub} />
+        <Section title="Wi-Fi (Gigahub)" icon={<Wifi size={14} />} defaultOpen={false}>
+          <WifiCard info={snap.gigahub} />
+        </Section>
 
-        <Activity devices={snap.gigahub.devices} />
+        <Section title="recent device activity" icon={<ActivityIcon size={14} />} defaultOpen={false}>
+          <Activity devices={snap.gigahub.devices} />
+        </Section>
 
-        <GigahubTable info={snap.gigahub} />
+        <Section
+          title={`Gigahub devices (${snap.gigahub.devices.length})`}
+          icon={<Router size={14} />}
+          defaultOpen={false}
+        >
+          <GigahubTable info={snap.gigahub} />
+        </Section>
 
-        <details class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)]">
-          <summary class="px-4 py-3 cursor-pointer text-xs uppercase tracking-wide text-[var(--color-muted)]">debug</summary>
-          <div class="p-4 space-y-4">
+        <Section title="debug" icon={<Settings size={14} />} defaultOpen={false}>
+          <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-4">
             <Pre title="interfaces" body={snap.interfaces} />
             <Pre title="routes" body={snap.routes} />
             <Pre title="firewall" body={snap.firewall} />
           </div>
-        </details>
+        </Section>
       </Show>
     </main>
   );

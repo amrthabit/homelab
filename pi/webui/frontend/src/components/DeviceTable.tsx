@@ -118,8 +118,7 @@ const DeviceRow: Component<{
 };
 
 export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
-  <section class="mb-8">
-    <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">{props.vlan.name}</h2>
+  <div>
     <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
       <table class="w-full table-fixed">
         <colgroup>
@@ -149,5 +148,5 @@ export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
         </tbody>
       </table>
     </div>
-  </section>
+  </div>
 );

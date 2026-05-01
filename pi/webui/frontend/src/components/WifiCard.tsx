@@ -4,9 +4,7 @@ import type { GigahubInfo } from "../types";
 const bandLabel = (b: string) => b.replace("_", ".").replace("GHZ", " GHz").trim() || "—";
 
 export const WifiCard: Component<{ info: GigahubInfo }> = (props) => (
-  <section class="mb-8">
-    <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">Wi-Fi (Gigahub)</h2>
-    <div class="space-y-3">
+  <div class="space-y-3">
 
       {/* Radios */}
       <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -74,6 +72,5 @@ export const WifiCard: Component<{ info: GigahubInfo }> = (props) => (
         </For>
       </div>
 
-    </div>
-  </section>
+  </div>
 );

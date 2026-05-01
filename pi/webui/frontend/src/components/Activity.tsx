@@ -21,9 +21,7 @@ export const Activity: Component<{ devices: GigahubDevice[] }> = (props) => {
   });
 
   return (
-    <section class="mb-8">
-      <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">recent device activity</h2>
-      <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+    <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
         <table class="w-full">
           <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
             <tr>
@@ -53,6 +51,5 @@ export const Activity: Component<{ devices: GigahubDevice[] }> = (props) => {
           </tbody>
         </table>
       </div>
-    </section>
   );
 };

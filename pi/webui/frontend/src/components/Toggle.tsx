@@ -8,7 +8,7 @@ export const ToggleCard: Component<{
 }> = (props) => (
   <button
     onClick={props.onClick}
-    class={`text-left p-4 rounded-lg border bg-[var(--color-card)] hover:border-[var(--color-accent)] transition cursor-pointer w-full grid grid-cols-[1fr_auto] gap-1 ${
+    class={`text-left p-4 rounded-md border bg-[var(--color-card)] hover:border-[var(--color-accent)] transition cursor-pointer w-full grid grid-cols-[1fr_auto] gap-1 ${
       props.on ? "border-[var(--color-up)]" : "border-[var(--color-border)]"
     }`}
   >
