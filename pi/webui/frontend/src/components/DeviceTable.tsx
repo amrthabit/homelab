@@ -4,13 +4,27 @@ import { Sparkline, HourlyBars } from "./Sparkline";
 import { MiniToggle } from "./Toggle";
 import { getHistory, toggleIotWan, toggleTrustedWan } from "../api";
 
-// Module-level expansion state — persists across SSE-driven re-renders
-const [openMacs, setOpenMacs] = createSignal<Set<string>>(new Set());
+// Module-level expansion state — persists across SSE-driven re-renders + localStorage
+const STORAGE_KEY = "homelab.openMacs";
+
+function loadOpenMacs(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+const [openMacs, setOpenMacs] = createSignal<Set<string>>(loadOpenMacs());
 
 function toggleOpen(mac: string) {
   setOpenMacs((prev) => {
     const next = new Set(prev);
     next.has(mac) ? next.delete(mac) : next.add(mac);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
+    } catch {}
     return next;
   });
 }

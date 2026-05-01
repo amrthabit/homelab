@@ -1,16 +1,44 @@
-import { createSignal, Show, type Component, type JSX } from "solid-js";
+import { createSignal, createEffect, Show, type Component, type JSX } from "solid-js";
 import { ChevronRight } from "lucide-solid";
+
+const STORAGE_PREFIX = "homelab.section.open.";
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+function readPersisted(key: string, fallback: boolean): boolean {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + key);
+    return raw === null ? fallback : raw === "1";
+  } catch {
+    return fallback;
+  }
+}
+
+function writePersisted(key: string, value: boolean) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + key, value ? "1" : "0");
+  } catch {}
+}
 
 export const Section: Component<{
   title: string;
+  /** Override key for storage. Defaults to slug(title). */
+  storageKey?: string;
   icon?: JSX.Element;
   defaultOpen?: boolean;
   collapsible?: boolean;
   right?: JSX.Element;
   children: JSX.Element;
 }> = (props) => {
-  const [open, setOpen] = createSignal(props.defaultOpen ?? true);
   const isCollapsible = props.collapsible ?? true;
+  const key = () => props.storageKey ?? slug(props.title);
+  const [open, setOpen] = createSignal(
+    isCollapsible ? readPersisted(key(), props.defaultOpen ?? true) : true,
+  );
+
+  createEffect(() => {
+    if (isCollapsible) writePersisted(key(), open());
+  });
 
   return (
     <section class="mb-6">
