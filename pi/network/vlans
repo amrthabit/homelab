@@ -1,0 +1,26 @@
+# Location: /etc/network/interfaces.d/vlans
+# VLAN sub-interfaces — only get traffic on a tagged trunk port.
+# eth0 DHCP fallback is in /etc/network/interfaces (preferred when on untagged port).
+
+# VLAN 10 — uplink (Gigahub subnet, Pi management on switch)
+auto eth0.10
+iface eth0.10 inet static
+    address 192.168.2.2
+    netmask 255.255.255.0
+    gateway 192.168.2.1
+    metric 100
+    vlan-raw-device eth0
+
+# VLAN 20 — IoT (Pi is gateway, no WAN by default)
+auto eth0.20
+iface eth0.20 inet static
+    address 192.168.20.1
+    netmask 255.255.255.0
+    vlan-raw-device eth0
+
+# VLAN 30 — trusted wired (Pi is gateway, full WAN)
+auto eth0.30
+iface eth0.30 inet static
+    address 192.168.30.1
+    netmask 255.255.255.0
+    vlan-raw-device eth0

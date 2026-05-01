@@ -1,0 +1,7 @@
+# Location: /etc/network/interfaces
+# Managed by homelab repo
+source interfaces.d/*
+
+# eth0 falls back to DHCP on untagged ports (e.g. plugged into Gigahub directly)
+allow-hotplug eth0
+iface eth0 inet dhcp
