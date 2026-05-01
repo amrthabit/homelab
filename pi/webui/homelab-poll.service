@@ -1,0 +1,7 @@
+[Unit]
+Description=Homelab device uptime poller
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/homelab/venv/bin/python /opt/homelab/poll.py

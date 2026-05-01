@@ -7,20 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<header>
-    <h1>homelab</h1>
-    <div class="stats">
-        <span>{{ stats.uptime }}</span>
-        <span>load {{ stats.load }}</span>
-        <span>mem {{ stats.mem_used_pct }}% / {{ stats.mem_total_gb }} GiB</span>
-        <span>{{ stats.temp }}</span>
-    </div>
-</header>
-
 <main>
     {% if state.vlan20_wan %}
     <div class="banner">⚠ Blanket VLAN 20 WAN is ON — all IoT devices reach the internet regardless of per-device toggle. Per-device states are preserved; turn blanket OFF to apply them.</div>
     {% endif %}
+
+    <section>
+        <h2>system</h2>
+        <div class="stats-card">
+            <div><span class="k">uptime</span><span class="v">{{ stats.uptime }}</span></div>
+            <div><span class="k">load</span><span class="v">{{ stats.load }}</span></div>
+            <div><span class="k">memory</span><span class="v">{{ stats.mem_used_pct }}% / {{ stats.mem_total_gb }} GiB</span></div>
+            <div><span class="k">temp</span><span class="v">{{ stats.temp }}</span></div>
+        </div>
+    </section>
 
     <section>
         <h2>toggles</h2>
@@ -34,8 +34,8 @@
             </form>
             <form action="{{ url_for('toggle', key='vlan20_wan') }}" method="post">
                 <button class="toggle {% if state.vlan20_wan %}on{% else %}off{% endif %}" type="submit">
-                    <span class="label">VLAN 20 internet</span>
-                    <span class="desc">IoT devices reach the WAN (default off)</span>
+                    <span class="label">VLAN 20 internet (blanket)</span>
+                    <span class="desc">forces WAN ON for all IoT — overrides per-device list</span>
                     <span class="state">{{ 'ON' if state.vlan20_wan else 'OFF' }}</span>
                 </button>
             </form>
@@ -45,14 +45,22 @@
     {% for vlan, items in leases.items() %}
     <section>
         <h2>{{ vlan }}</h2>
-        <table>
-            <thead><tr><th>hostname</th><th>IP</th><th>MAC</th>{% if 'IoT' in vlan or 'Trusted' in vlan %}<th>WAN</th>{% endif %}</tr></thead>
+        <table class="devices">
+            <thead><tr><th>hostname</th><th>IP</th><th>MAC</th><th>24h</th>{% if 'IoT' in vlan or 'Trusted' in vlan %}<th>WAN</th>{% endif %}</tr></thead>
             <tbody>
             {% for l in items %}
-                <tr>
+                <tr class="device-row" data-mac="{{ l.mac }}">
                     <td>{{ l.hostname }}</td>
                     <td class="mono">{{ l.ip }}</td>
-                    <td class="mono">{{ l.mac }}</td>
+                    <td class="mono small">{{ l.mac }}</td>
+                    <td>
+                        <span class="spark" title="avg uptime 24h: {{ l.spark.avg if l.spark.avg is not none else '—' }}%, samples: {{ l.spark.samples }}">
+                            {% for p in l.spark.buckets %}
+                                <i class="bar {% if p is none %}gap{% elif p == 100 %}full{% elif p >= 50 %}mid{% else %}low{% endif %}"
+                                   style="height: {{ (p or 0) * 0.18 + 2 }}px"></i>
+                            {% endfor %}
+                        </span>
+                    </td>
                     {% if 'IoT' in vlan %}
                     {% set stored = l.mac in iot_wan_macs %}
                     {% set effective = state.vlan20_wan or stored %}
@@ -75,8 +83,13 @@
                     </td>
                     {% endif %}
                 </tr>
+                <tr class="history-row" data-mac-target="{{ l.mac }}" hidden>
+                    <td colspan="6">
+                        <div class="history-loading">loading…</div>
+                    </td>
+                </tr>
             {% else %}
-                <tr><td colspan="4" class="empty">no devices</td></tr>
+                <tr><td colspan="5" class="empty">no devices</td></tr>
             {% endfor %}
             </tbody>
         </table>
@@ -98,5 +111,41 @@
         <pre>{{ firewall }}</pre>
     </section>
 </main>
+
+<script>
+document.querySelectorAll('.device-row').forEach(row => {
+    row.addEventListener('click', async (e) => {
+        if (e.target.closest('form, button, a')) return;
+        const mac = row.dataset.mac;
+        const histRow = document.querySelector(`tr.history-row[data-mac-target="${CSS.escape(mac)}"]`);
+        if (!histRow) return;
+        if (!histRow.hidden) { histRow.hidden = true; row.classList.remove('expanded'); return; }
+        histRow.hidden = false;
+        row.classList.add('expanded');
+        const cell = histRow.querySelector('td');
+        cell.innerHTML = '<div class="history-loading">loading…</div>';
+        try {
+            const res = await fetch('/api/history/' + encodeURIComponent(mac));
+            const data = await res.json();
+            cell.innerHTML = '';
+            const wrap = document.createElement('div');
+            wrap.className = 'history-grid';
+            data.forEach(d => {
+                const cell2 = document.createElement('span');
+                cell2.className = 'history-cell ' + (d.pct === null ? 'gap' : d.pct === 100 ? 'full' : d.pct >= 50 ? 'mid' : 'low');
+                cell2.title = `${d.date}: ${d.pct === null ? 'no data' : d.pct + '%'}`;
+                wrap.appendChild(cell2);
+            });
+            cell.appendChild(wrap);
+            const legend = document.createElement('div');
+            legend.className = 'history-legend';
+            legend.textContent = '90 days — each cell = 1 day, click row again to collapse';
+            cell.appendChild(legend);
+        } catch (err) {
+            cell.innerHTML = '<div class="history-loading">error: ' + err + '</div>';
+        }
+    });
+});
+</script>
 </body>
 </html>

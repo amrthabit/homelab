@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Homelab control plane — Flask UI on the Pi bridge box."""
 import json
+import sqlite3
 import subprocess
+import time
 from pathlib import Path
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
@@ -9,6 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 
 APP_DIR = Path(__file__).parent.resolve()
 STATE_FILE = Path("/var/lib/homelab/state.json")
+UPTIME_DB = Path("/var/lib/homelab/uptime.db")
 NFTABLES_CONF = Path("/etc/nftables.conf")
 NFTABLES_TEMPLATE = APP_DIR / "templates" / "nftables.conf.j2"
 
@@ -18,6 +21,13 @@ DEFAULT_STATE = {
     "iot_wan_macs": [],
     "trusted_wan_blocked_macs": [],
 }
+
+# Static devices not in dnsmasq leases — match poll.py
+STATIC_DEVICES = [
+    {"mac": "host:192.168.2.1", "ip": "192.168.2.1", "hostname": "Gigahub"},
+    {"mac": "host:192.168.2.10", "ip": "192.168.2.10", "hostname": "Pi (self)"},
+    {"mac": "host:192.168.2.153", "ip": "192.168.2.153", "hostname": "TL-SG108E"},
+]
 
 app = Flask(__name__)
 
@@ -57,21 +67,19 @@ def sh(cmd: list[str]) -> str:
 
 
 def get_dhcp_leases() -> dict[str, list[dict]]:
-    """Returns leases grouped by VLAN: {'VLAN 20 (IoT)': [...], 'VLAN 30 (Trusted)': [...]}"""
     leases_path = Path("/var/lib/misc/dnsmasq.leases")
-    grouped = {"VLAN 20 (IoT)": [], "VLAN 30 (Trusted)": []}
-    if not leases_path.exists():
-        return grouped
-    for line in leases_path.read_text().splitlines():
-        parts = line.split()
-        if len(parts) < 4:
-            continue
-        ip = parts[2]
-        entry = {"mac": parts[1], "ip": ip, "hostname": parts[3] if parts[3] != "*" else "—"}
-        if ip.startswith("192.168.20."):
-            grouped["VLAN 20 (IoT)"].append(entry)
-        elif ip.startswith("192.168.30."):
-            grouped["VLAN 30 (Trusted)"].append(entry)
+    grouped = {"VLAN 20 (IoT)": [], "VLAN 30 (Trusted)": [], "VLAN 10 + Mgmt": list(STATIC_DEVICES)}
+    if leases_path.exists():
+        for line in leases_path.read_text().splitlines():
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            ip = parts[2]
+            entry = {"mac": parts[1], "ip": ip, "hostname": parts[3] if parts[3] != "*" else "—"}
+            if ip.startswith("192.168.20."):
+                grouped["VLAN 20 (IoT)"].append(entry)
+            elif ip.startswith("192.168.30."):
+                grouped["VLAN 30 (Trusted)"].append(entry)
     return grouped
 
 
@@ -104,9 +112,73 @@ def get_stats() -> dict:
     }
 
 
+def db_query(query: str, args: tuple = ()) -> list[tuple]:
+    if not UPTIME_DB.exists():
+        return []
+    con = sqlite3.connect(UPTIME_DB)
+    rows = con.execute(query, args).fetchall()
+    con.close()
+    return rows
+
+
+def sparkline_24h(mac: str) -> dict:
+    """Return last 24h aggregated to 24 hourly buckets: {'pct': [0..100, ...], 'avg': float}."""
+    now = int(time.time())
+    start = now - 86400
+    rows = db_query(
+        "SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts",
+        (mac, start),
+    )
+    buckets = [None] * 24
+    bucket_counts = [0] * 24
+    bucket_ups = [0] * 24
+    for ts, up in rows:
+        idx = int((ts - start) / 3600)
+        if 0 <= idx < 24:
+            bucket_counts[idx] += 1
+            bucket_ups[idx] += up
+    pcts = []
+    for i in range(24):
+        if bucket_counts[i] == 0:
+            pcts.append(None)
+        else:
+            pcts.append(round(100 * bucket_ups[i] / bucket_counts[i]))
+    seen = [p for p in pcts if p is not None]
+    avg = round(sum(seen) / len(seen), 1) if seen else None
+    return {"buckets": pcts, "avg": avg, "samples": len(rows)}
+
+
+def history_90d(mac: str) -> list[dict]:
+    """Return last 90 days aggregated to daily buckets."""
+    now = int(time.time())
+    start = now - 90 * 86400
+    rows = db_query(
+        "SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts",
+        (mac, start),
+    )
+    buckets = {}
+    for ts, up in rows:
+        day = ts // 86400
+        b = buckets.setdefault(day, {"up": 0, "total": 0})
+        b["up"] += up
+        b["total"] += 1
+    today = now // 86400
+    out = []
+    for day in range(today - 89, today + 1):
+        b = buckets.get(day)
+        pct = round(100 * b["up"] / b["total"]) if b else None
+        out.append({"day": day, "pct": pct, "date": time.strftime("%Y-%m-%d", time.gmtime(day * 86400))})
+    return out
+
+
 @app.route("/")
 def index():
     state = load_state()
+    leases = get_dhcp_leases()
+    # Attach sparkline data to each device
+    for vlan_items in leases.values():
+        for d in vlan_items:
+            d["spark"] = sparkline_24h(d["mac"])
     return render_template(
         "index.html",
         state=state,
@@ -115,9 +187,14 @@ def index():
         interfaces=get_interfaces(),
         routes=get_routes(),
         firewall=get_firewall(),
-        leases=get_dhcp_leases(),
+        leases=leases,
         stats=get_stats(),
     )
+
+
+@app.route("/api/history/<path:mac>")
+def api_history(mac):
+    return jsonify(history_90d(mac))
 
 
 @app.route("/toggle/<key>", methods=["POST"])
@@ -135,7 +212,6 @@ def toggle(key):
 
 @app.route("/iot_wan/<mac>", methods=["POST"])
 def toggle_iot_wan(mac):
-    """Toggle internet access for a single IoT device (allowlist)."""
     state = load_state()
     macs = set(state.get("iot_wan_macs", []))
     mac = mac.lower()
@@ -150,7 +226,6 @@ def toggle_iot_wan(mac):
 
 @app.route("/trusted_wan/<mac>", methods=["POST"])
 def toggle_trusted_wan(mac):
-    """Toggle internet access for a single trusted device (blocklist; default allowed)."""
     state = load_state()
     blocked = set(state.get("trusted_wan_blocked_macs", []))
     mac = mac.lower()
