@@ -98,6 +98,13 @@ export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
     <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">{props.vlan.name}</h2>
     <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
       <table class="w-full table-fixed">
+        <colgroup>
+          <col />
+          <col class="w-0 sm:w-auto" />
+          <col class="w-0 sm:w-auto" />
+          <col class="w-0 sm:w-auto" />
+          <col class="w-20" />
+        </colgroup>
         <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
           <tr>
             <th class="px-3 py-2 text-left">hostname</th>
