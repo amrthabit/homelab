@@ -2,6 +2,52 @@ import { For, Show, createMemo, createSignal, type Component } from "solid-js";
 import { Cable, Wifi as WifiIcon } from "lucide-solid";
 import type { GigahubInfo } from "../types";
 
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  return `${(n / 1024 ** 3).toFixed(2)} GB`;
+}
+
+const SignalCell: Component<{ dbm: number }> = (p) => {
+  const colour = () => {
+    if (p.dbm === 0) return "text-[var(--color-muted)]";
+    if (p.dbm >= -55) return "text-[var(--color-up)]";
+    if (p.dbm >= -70) return "text-[var(--color-warn)]";
+    if (p.dbm >= -80) return "text-[var(--color-low)]";
+    return "text-[var(--color-down)]";
+  };
+  return <span class={colour()}>{p.dbm === 0 ? "-" : `${p.dbm} dBm`}</span>;
+};
+
+const BarCell: Component<{ value: number; max: number; color: string }> = (p) => {
+  const pct = () => (p.max > 0 ? Math.min(100, (p.value / p.max) * 100) : 0);
+  return (
+    <div class="relative h-5 flex items-center">
+      <div
+        class="absolute right-0 top-0 bottom-0 rounded-l opacity-25"
+        style={{ width: `${pct()}%`, background: `var(--color-${p.color})` }}
+      />
+      <span class="relative ml-auto pr-2 font-mono text-xs text-[var(--color-muted)]">
+        {p.value > 0 ? formatBytes(p.value) : "-"}
+      </span>
+    </div>
+  );
+};
+
+const FilterButton: Component<{ current: string; value: string; onClick: () => void; children: any }> = (p) => (
+  <button
+    onClick={p.onClick}
+    class={`px-2 py-0.5 rounded border font-mono ${
+      p.current === p.value
+        ? "border-[var(--color-accent)] text-[var(--color-accent)]"
+        : "border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+    }`}
+  >
+    {p.children}
+  </button>
+);
+
 export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
   const [filter, setFilter] = createSignal<"all" | "active" | "wifi" | "wired">("active");
 
@@ -19,6 +65,9 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
       return (a.hostname || "").localeCompare(b.hostname || "");
     });
   });
+
+  const maxTx = createMemo(() => Math.max(0, ...devices().map((d) => d.wifi?.bytes_tx || 0)));
+  const maxRx = createMemo(() => Math.max(0, ...devices().map((d) => d.wifi?.bytes_rx || 0)));
 
   const lastUpdate = () => props.info.ts ? new Date(props.info.ts * 1000).toLocaleTimeString() : "-";
 
@@ -43,12 +92,13 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
       <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
         <table class="w-full table-fixed">
           <colgroup>
-            <col />
+            <col class="w-32 sm:w-40" />
             <col class="w-0 sm:w-32" />
             <col class="w-0 sm:w-36" />
             <col class="w-0 sm:w-20" />
-            <col class="w-0 sm:w-32" />
-            <col class="w-20" />
+            <col />
+            <col />
+            <col class="w-16" />
           </colgroup>
           <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
             <tr>
@@ -56,13 +106,14 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
               <th class="px-3 py-2 text-left hidden sm:table-cell">IP</th>
               <th class="px-3 py-2 text-left hidden sm:table-cell">MAC</th>
               <th class="px-3 py-2 text-right hidden sm:table-cell">signal</th>
-              <th class="px-3 py-2 text-right hidden sm:table-cell">data tx/rx</th>
+              <th class="px-3 py-2 text-right hidden sm:table-cell">tx</th>
+              <th class="px-3 py-2 text-right hidden sm:table-cell">rx</th>
               <th class="px-3 py-2 text-right">link</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--color-border)]">
             <Show when={devices().length > 0} fallback={
-              <tr><td colspan="6" class="px-3 py-6 text-center text-[var(--color-muted)]">no devices</td></tr>
+              <tr><td colspan="7" class="px-3 py-6 text-center text-[var(--color-muted)]">no devices</td></tr>
             }>
               <For each={devices()}>
                 {(d) => (
@@ -73,18 +124,19 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
                     <td class="px-3 py-2 text-right font-mono text-xs hidden sm:table-cell">
                       {d.wifi ? <SignalCell dbm={d.wifi.signal_dbm} /> : <span class="text-[var(--color-muted)]">-</span>}
                     </td>
-                    <td class="px-3 py-2 text-right font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell">
-                      {d.wifi && (d.wifi.bytes_tx + d.wifi.bytes_rx > 0)
-                        ? `${formatBytes(d.wifi.bytes_tx)} / ${formatBytes(d.wifi.bytes_rx)}`
-                        : "-"}
+                    <td class="px-2 py-1 hidden sm:table-cell">
+                      <BarCell value={d.wifi?.bytes_tx || 0} max={maxTx()} color="up" />
                     </td>
-                    <td class="px-3 py-2 text-right text-xs">
-                      <span class={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono ${
+                    <td class="px-2 py-1 hidden sm:table-cell">
+                      <BarCell value={d.wifi?.bytes_rx || 0} max={maxRx()} color="warn" />
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      <span class={`inline-flex items-center justify-center gap-1 w-14 px-1 py-0.5 rounded font-mono text-xs ${
                         d.interface === "WiFi"
                           ? "bg-[#1c3a4a] text-[#79c0ff]"
                           : "bg-[#1c3a1c] text-[#7ee787]"
                       }`}>
-                        {d.interface === "WiFi" ? <WifiIcon size={12} /> : <Cable size={12} />}
+                        {d.interface === "WiFi" ? <WifiIcon size={11} /> : <Cable size={11} />}
                         {d.interface === "WiFi" ? "wifi" : "eth"}
                       </span>
                     </td>
@@ -99,34 +151,3 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
     </div>
   );
 };
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
-  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  return `${(n / 1024 ** 3).toFixed(2)} GB`;
-}
-
-const SignalCell: Component<{ dbm: number }> = (p) => {
-  const colour = () => {
-    if (p.dbm === 0) return "text-[var(--color-muted)]";
-    if (p.dbm >= -55) return "text-[var(--color-up)]";
-    if (p.dbm >= -70) return "text-[var(--color-warn)]";
-    if (p.dbm >= -80) return "text-[var(--color-low)]";
-    return "text-[var(--color-down)]";
-  };
-  return <span class={colour()}>{p.dbm === 0 ? "-" : `${p.dbm} dBm`}</span>;
-};
-
-const FilterButton: Component<{ current: string; value: string; onClick: () => void; children: any }> = (p) => (
-  <button
-    onClick={p.onClick}
-    class={`px-2 py-0.5 rounded border font-mono ${
-      p.current === p.value
-        ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-        : "border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]"
-    }`}
-  >
-    {p.children}
-  </button>
-);

@@ -50,7 +50,7 @@ export const WifiCard: Component<{ info: GigahubInfo }> = (props) => (
                 <td class="px-3 py-2 font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell truncate">{s.bssid || "-"}</td>
                 <td class="px-3 py-2 text-right font-mono text-sm">{s.client_count}</td>
                 <td class="px-3 py-2 text-right">
-                  <span class={`inline-block px-2 py-0.5 rounded text-xs font-mono font-semibold ${
+                  <span class={`inline-flex items-center justify-center w-14 px-1 py-0.5 rounded text-xs font-mono font-semibold ${
                     s.enabled
                       ? "bg-[#0f3a1c] text-[var(--color-up)]"
                       : "bg-[#3a1010] text-[var(--color-down)]"

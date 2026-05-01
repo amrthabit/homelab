@@ -1,4 +1,4 @@
-import { createMemo, Show, type Component } from "solid-js";
+import { createMemo, createSignal, Show, type Component } from "solid-js";
 
 export type ChartPoint = { ts: number; value: number };
 
@@ -6,15 +6,21 @@ interface Props {
   data: ChartPoint[];
   height?: number;
   width?: number;
-  /** Tailwind text-color class for the line stroke. */
   color?: string;
-  /** Override y range. Otherwise derived from data. */
   yMin?: number;
   yMax?: number;
-  /** Format the displayed current value. */
   formatY?: (v: number) => string;
-  /** Show fill under the line. */
   filled?: boolean;
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts * 1000);
+  const now = Date.now();
+  const dt = (now - d.getTime()) / 1000;
+  if (dt < 60) return "just now";
+  if (dt < 3600) return `${Math.round(dt / 60)}m ago`;
+  if (dt < 86400) return `${Math.round(dt / 3600)}h ago`;
+  return d.toISOString().slice(5, 16).replace("T", " ");
 }
 
 export const Chart: Component<Props> = (props) => {
@@ -23,10 +29,11 @@ export const Chart: Component<Props> = (props) => {
   const stroke = () => props.color ?? "var(--color-accent)";
   const fmt = props.formatY ?? ((v) => String(Math.round(v)));
 
+  const [hover, setHover] = createSignal<ChartPoint | null>(null);
+
   const computed = createMemo(() => {
     const data = props.data;
     if (!data.length) return null;
-
     const xs = data.map((p) => p.ts);
     const ys = data.map((p) => p.value);
     const xMin = xs[0];
@@ -35,41 +42,49 @@ export const Chart: Component<Props> = (props) => {
     const yMax = props.yMax ?? Math.max(...ys);
     const yRange = Math.max(yMax - yMin, 1e-9);
     const xRange = Math.max(xMax - xMin, 1);
-
     const sx = (t: number) => ((t - xMin) / xRange) * (w() - 2) + 1;
     const sy = (v: number) => h() - 1 - ((v - yMin) / yRange) * (h() - 2);
-
     const linePath = data
       .map((p, i) => `${i ? "L" : "M"}${sx(p.ts).toFixed(1)},${sy(p.value).toFixed(1)}`)
       .join(" ");
-
     const fillPath = data.length > 1
       ? `M${sx(xs[0]).toFixed(1)},${h()} ` +
         data.map((p) => `L${sx(p.ts).toFixed(1)},${sy(p.value).toFixed(1)}`).join(" ") +
         ` L${sx(xs[xs.length - 1]).toFixed(1)},${h()} Z`
       : "";
-
-    const last = ys[ys.length - 1];
-
-    return { linePath, fillPath, last, yMin, yMax, samples: data.length };
+    return { linePath, fillPath, last: ys[ys.length - 1], yMin, yMax, xMin, xMax, xRange, sx, sy };
   });
 
+  const onMove = (e: MouseEvent) => {
+    const c = computed();
+    if (!c) return;
+    const svg = e.currentTarget as SVGSVGElement;
+    const rect = svg.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetTs = c.xMin + ratio * c.xRange;
+    let best: ChartPoint | null = null;
+    let bestDist = Infinity;
+    for (const p of props.data) {
+      const d = Math.abs(p.ts - targetTs);
+      if (d < bestDist) { bestDist = d; best = p; }
+    }
+    setHover(best);
+  };
+
+  const displayValue = () => hover()?.value ?? computed()?.last;
+  const displayTs = () => hover()?.ts;
+
   return (
-    <div class="w-full">
-      <Show
-        when={computed()}
-        fallback={
-          <div class="text-xs text-[var(--color-muted)] py-2">no data</div>
-        }
-      >
+    <div class="w-full relative">
+      <Show when={computed()} fallback={<div class="text-xs text-[var(--color-muted)] py-2">no data</div>}>
         {(c) => (
           <>
-            <div class="flex justify-between items-baseline text-xs mb-1">
+            <div class="flex justify-between items-baseline text-xs mb-1 min-h-[1em]">
               <span class="text-[var(--color-muted)] font-mono">
-                {fmt(c().yMin)}-{fmt(c().yMax)}
+                {hover() ? formatTime(displayTs()!) : `${fmt(c().yMin)}-${fmt(c().yMax)}`}
               </span>
               <span class="font-mono font-semibold" style={{ color: stroke() }}>
-                {fmt(c().last)}
+                {displayValue() !== undefined ? fmt(displayValue()!) : "-"}
               </span>
             </div>
             <svg
@@ -77,12 +92,39 @@ export const Chart: Component<Props> = (props) => {
               width="100%"
               height={h()}
               preserveAspectRatio="none"
-              class="block"
+              class="block cursor-crosshair"
+              onMouseMove={onMove}
+              onMouseLeave={() => setHover(null)}
             >
               <Show when={props.filled}>
                 <path d={c().fillPath} fill={stroke()} fill-opacity="0.15" />
               </Show>
-              <path d={c().linePath} fill="none" stroke={stroke()} stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+              <path d={c().linePath} fill="none" stroke={stroke()} stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+              <Show when={hover()}>
+                {(hp) => (
+                  <>
+                    <line
+                      x1={c().sx(hp().ts)}
+                      x2={c().sx(hp().ts)}
+                      y1={0}
+                      y2={h()}
+                      stroke="var(--color-muted)"
+                      stroke-dasharray="2 2"
+                      stroke-width="0.5"
+                      vector-effect="non-scaling-stroke"
+                    />
+                    <circle
+                      cx={c().sx(hp().ts)}
+                      cy={c().sy(hp().value)}
+                      r="2.5"
+                      fill={stroke()}
+                      stroke="var(--color-bg)"
+                      stroke-width="1"
+                      vector-effect="non-scaling-stroke"
+                    />
+                  </>
+                )}
+              </Show>
             </svg>
           </>
         )}
@@ -91,7 +133,6 @@ export const Chart: Component<Props> = (props) => {
   );
 };
 
-/** Bucket points by `bucketSec`, keeping the max value in each bucket. */
 export function aggregateMax(points: ChartPoint[], bucketSec: number): ChartPoint[] {
   if (!points.length) return [];
   const buckets = new Map<number, number>();
@@ -103,14 +144,12 @@ export function aggregateMax(points: ChartPoint[], bucketSec: number): ChartPoin
   return [...buckets.entries()].sort(([a], [b]) => a - b).map(([ts, value]) => ({ ts, value }));
 }
 
-/** Compute delta-per-second from cumulative byte counters. */
 export function deltaPerSecond(points: ChartPoint[]): ChartPoint[] {
   if (points.length < 2) return [];
   const out: ChartPoint[] = [];
   for (let i = 1; i < points.length; i++) {
     const dt = points[i].ts - points[i - 1].ts;
     let dv = points[i].value - points[i - 1].value;
-    // Counter resets (router reboot, AP reassoc) → skip
     if (dt <= 0 || dv < 0) continue;
     out.push({ ts: points[i].ts, value: dv / dt });
   }
