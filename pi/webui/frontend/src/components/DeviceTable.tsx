@@ -15,16 +15,27 @@ function toggleOpen(mac: string) {
   });
 }
 
+const Field: Component<{ label: string; value?: string; mono?: boolean; children?: any }> = (p) => (
+  <div class="flex flex-col gap-0.5 min-w-0">
+    <span class="text-xs uppercase tracking-wide text-[var(--color-muted)]">{p.label}</span>
+    {p.children ? p.children : <span class={`truncate ${p.mono ? "font-mono text-sm" : ""}`}>{p.value}</span>}
+  </div>
+);
+
+const LegendDot: Component<{ color: string; label: string }> = (p) => (
+  <span class="inline-flex items-center gap-1.5">
+    <i class={`inline-block w-2.5 h-2.5 rounded-sm`} style={{ background: `var(--color-${p.color})` }} />
+    <span>{p.label}</span>
+  </span>
+);
+
 const DeviceRow: Component<{
   device: Device;
   vlan: Vlan;
   state: State;
 }> = (props) => {
   const open = () => openMacs().has(props.device.mac);
-  const [history] = createResource(open, async (isOpen) => {
-    if (!isOpen) return [];
-    return getHistory(props.device.mac);
-  });
+  const [history] = createResource(open, async (isOpen) => (isOpen ? getHistory(props.device.mac) : []));
 
   const stored = () => props.state.iot_wan_macs.includes(props.device.mac);
   const blocked = () => props.state.trusted_wan_blocked_macs.includes(props.device.mac);
@@ -33,7 +44,6 @@ const DeviceRow: Component<{
   const handleToggleWan = async () => {
     if (props.vlan.kind === "iot") await toggleIotWan(props.device.mac);
     else if (props.vlan.kind === "trusted") await toggleTrustedWan(props.device.mac);
-    // SSE pushes the updated snapshot — no manual refetch needed
   };
 
   return (
@@ -44,8 +54,8 @@ const DeviceRow: Component<{
         onClick={() => toggleOpen(props.device.mac)}
       >
         <td class="px-3 py-2 truncate">{props.device.hostname}</td>
-        <td class="px-3 py-2 font-mono text-sm hidden sm:table-cell">{props.device.ip}</td>
-        <td class="px-3 py-2 font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell">{props.device.mac}</td>
+        <td class="px-3 py-2 font-mono text-sm hidden sm:table-cell truncate">{props.device.ip}</td>
+        <td class="px-3 py-2 font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell truncate">{props.device.mac}</td>
         <td class="px-3 py-2 hidden sm:table-cell">
           <Sparkline data={props.device.spark} />
         </td>
@@ -60,38 +70,52 @@ const DeviceRow: Component<{
           </Show>
         </td>
       </tr>
-      <Show when={open()}>
-        <tr class="bg-[var(--color-bg)]">
-          <td colspan="5" class="px-3 py-3 align-top max-w-0">
-            <div class="space-y-3 min-w-0">
-              <div class="sm:hidden grid gap-2 pb-3 border-b border-[var(--color-border)]">
-                <Field label="IP" value={props.device.ip} mono />
-                <Field label="MAC" value={props.device.mac} mono />
-                <Field label="48h">
+      <tr class="bg-[var(--color-bg)]">
+        <td colspan="5" class="p-0 max-w-0">
+          <div class={`grid transition-[grid-template-rows] duration-200 ease-out ${open() ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+            <div class="overflow-hidden">
+              <div class="px-4 py-4 space-y-4 min-w-0">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Field label="hostname" value={props.device.hostname} />
+                  <Field label="IP" value={props.device.ip} mono />
+                  <Field label="MAC" value={props.device.mac} mono />
+                  <Field label="48h avg" value={props.device.spark.avg !== null ? `${props.device.spark.avg}%` : "—"} />
+                </div>
+
+                <div>
+                  <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">last 48 hours</div>
                   <Sparkline data={props.device.spark} />
-                </Field>
-              </div>
-              <div class="overflow-x-auto whitespace-nowrap -mx-3 px-3 max-w-full">
-                <Show when={!history.loading} fallback={<div class="text-xs text-[var(--color-muted)]">loading…</div>}>
-                  <Show when={(history() ?? []).length > 0}>
-                    <HourlyBars buckets={(history() ?? []).map((p) => ({ pct: p.pct, ts: p.ts }))} />
-                  </Show>
-                </Show>
+                </div>
+
+                <div>
+                  <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">last 30 days · 1px = 1 hour</div>
+                  <div class="overflow-x-auto whitespace-nowrap max-w-full">
+                    <Show
+                      when={!history.loading}
+                      fallback={<div class="text-xs text-[var(--color-muted)]">loading…</div>}
+                    >
+                      <Show when={(history() ?? []).length > 0}>
+                        <HourlyBars buckets={(history() ?? []).map((p) => ({ pct: p.pct, ts: p.ts }))} />
+                      </Show>
+                    </Show>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--color-muted)] pt-1 border-t border-[var(--color-border)]">
+                  <LegendDot color="up" label="100%" />
+                  <LegendDot color="warn" label="50–99%" />
+                  <LegendDot color="low" label="1–49%" />
+                  <LegendDot color="down" label="0%" />
+                  <LegendDot color="border" label="no data" />
+                </div>
               </div>
             </div>
-          </td>
-        </tr>
-      </Show>
+          </div>
+        </td>
+      </tr>
     </>
   );
 };
-
-const Field: Component<{ label: string; value?: string; mono?: boolean; children?: any }> = (props) => (
-  <div class="flex items-center gap-3">
-    <span class="text-xs uppercase tracking-wide text-[var(--color-muted)] min-w-[2.5rem]">{props.label}</span>
-    {props.children ? props.children : <span class={`flex-1 break-all ${props.mono ? "font-mono text-sm" : ""}`}>{props.value}</span>}
-  </div>
-);
 
 export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
   <section class="mb-8">
