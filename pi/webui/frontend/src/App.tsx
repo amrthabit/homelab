@@ -106,7 +106,7 @@ const App: Component = () => {
         </Section>
 
         <Section
-          title={`Gigahub devices (${snap.gigahub.devices.length})`}
+          title="Gigahub devices"
           icon={<Router size={14} />}
           defaultOpen={false}
         >
