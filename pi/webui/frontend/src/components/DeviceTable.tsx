@@ -8,7 +8,6 @@ const DeviceRow: Component<{
   device: Device;
   vlan: Vlan;
   state: State;
-  onChange: () => void;
 }> = (props) => {
   const [open, setOpen] = createSignal(false);
   const [history] = createResource(open, async (isOpen) => {
@@ -23,7 +22,7 @@ const DeviceRow: Component<{
   const handleToggleWan = async () => {
     if (props.vlan.kind === "iot") await toggleIotWan(props.device.mac);
     else if (props.vlan.kind === "trusted") await toggleTrustedWan(props.device.mac);
-    props.onChange();
+    // SSE pushes the updated snapshot — no manual refetch needed
   };
 
   return (
@@ -83,7 +82,7 @@ const Field: Component<{ label: string; value?: string; mono?: boolean; children
   </div>
 );
 
-export const DeviceTable: Component<{ vlan: Vlan; state: State; onChange: () => void }> = (props) => (
+export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
   <section class="mb-8">
     <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">{props.vlan.name}</h2>
     <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
@@ -102,7 +101,7 @@ export const DeviceTable: Component<{ vlan: Vlan; state: State; onChange: () => 
             <tr><td colspan="5" class="px-3 py-6 text-center text-[var(--color-muted)]">no devices</td></tr>
           }>
             <For each={props.vlan.devices}>
-              {(d) => <DeviceRow device={d} vlan={props.vlan} state={props.state} onChange={props.onChange} />}
+              {(d) => <DeviceRow device={d} vlan={props.vlan} state={props.state} />}
             </For>
           </Show>
         </tbody>

@@ -5,6 +5,12 @@ export type State = {
   trusted_wan_blocked_macs: string[];
 };
 
+export type ToggleResult = {
+  ok: boolean;
+  msg: string;
+  state: State;
+};
+
 export type Stats = {
   uptime: string;
   load: string;

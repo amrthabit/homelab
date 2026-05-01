@@ -1,12 +1,12 @@
 [Unit]
-Description=Homelab control plane web UI
+Description=Homelab control plane (FastAPI + SPA)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=__WEBUI__/venv/bin/python __WEBUI__/app.py
 WorkingDirectory=__WEBUI__
+ExecStart=__WEBUI__/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 80
 Restart=on-failure
 RestartSec=2
 User=root

@@ -1,25 +1,43 @@
-import { createResource, createSignal, For, Show, type Component } from "solid-js";
-import { getSnapshot, toggleKey } from "./api";
+import { createSignal, onCleanup, onMount, For, Show, type Component } from "solid-js";
+import type { Snapshot } from "./types";
+import { getSnapshot, subscribeSnapshot, toggleKey } from "./api";
 import { ToggleCard } from "./components/Toggle";
 import { DeviceTable } from "./components/DeviceTable";
 
 const App: Component = () => {
-  const [refreshKey, setRefreshKey] = createSignal(0);
-  const [snapshot, { refetch }] = createResource(refreshKey, () => getSnapshot());
+  const [snap, setSnap] = createSignal<Snapshot | null>(null);
+  const [error, setError] = createSignal<string | null>(null);
 
-  // Auto-refresh every 30s
-  setInterval(() => refetch(), 30_000);
-
-  const refresh = () => setRefreshKey((n) => n + 1);
+  onMount(() => {
+    // Initial load via fetch (so we render fast even before SSE is up)
+    getSnapshot().then(setSnap).catch((e) => setError(String(e)));
+    // Then live updates via SSE
+    const close = subscribeSnapshot((s) => {
+      setSnap(s);
+      setError(null);
+    });
+    onCleanup(() => close());
+  });
 
   const handleToggle = async (key: string) => {
-    await toggleKey(key);
-    refresh();
+    try {
+      const res = await toggleKey(key);
+      // SSE will follow up; but optimistic update so UI is snappy
+      setSnap((s) => (s ? { ...s, state: res.state } : s));
+    } catch (e) {
+      setError(String(e));
+    }
   };
 
   return (
     <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      <Show when={snapshot()} fallback={<div class="text-[var(--color-muted)]">loading…</div>}>
+      <Show when={error()}>
+        <div class="border border-[var(--color-down)] bg-[#2d1010] text-[var(--color-down)] rounded-md px-4 py-2 text-sm">
+          {error()}
+        </div>
+      </Show>
+
+      <Show when={snap()} fallback={<div class="text-[var(--color-muted)]">loading…</div>}>
         {(snap) => (
           <>
             <Show when={snap().state.vlan20_wan}>
@@ -57,7 +75,7 @@ const App: Component = () => {
             </section>
 
             <For each={snap().vlans}>
-              {(vlan) => <DeviceTable vlan={vlan} state={snap().state} onChange={refresh} />}
+              {(vlan) => <DeviceTable vlan={vlan} state={snap().state} />}
             </For>
 
             <details class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)]">
