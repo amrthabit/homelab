@@ -146,7 +146,7 @@ const DeviceRow: Component<{
 
                 <div>
                   <div class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">uptime · last 30 days · 1px = 1 hour</div>
-                  <div class="overflow-x-auto whitespace-nowrap max-w-full">
+                  <div class="overflow-x-auto whitespace-nowrap max-w-full pt-7" style="overflow-y: visible">
                     <Show
                       when={!history.loading}
                       fallback={<div class="text-xs text-[var(--color-muted)]">loading…</div>}
@@ -174,7 +174,11 @@ const DeviceRow: Component<{
   );
 };
 
-export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
+export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => {
+  const sorted = () => [...props.vlan.devices].sort((a, b) =>
+    (a.hostname || "").localeCompare(b.hostname || "")
+  );
+  return (
   <div>
     <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
       <table class="w-full table-fixed">
@@ -195,10 +199,10 @@ export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
           </tr>
         </thead>
         <tbody class="divide-y divide-[var(--color-border)]">
-          <Show when={props.vlan.devices.length > 0} fallback={
+          <Show when={sorted().length > 0} fallback={
             <tr><td colspan="5" class="px-3 py-6 text-center text-[var(--color-muted)]">no devices</td></tr>
           }>
-            <For each={props.vlan.devices}>
+            <For each={sorted()}>
               {(d) => <DeviceRow device={d} vlan={props.vlan} state={props.state} />}
             </For>
           </Show>
@@ -206,4 +210,5 @@ export const DeviceTable: Component<{ vlan: Vlan; state: State }> = (props) => (
       </table>
     </div>
   </div>
-);
+  );
+};

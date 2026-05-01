@@ -59,9 +59,6 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
     if (f === "wired") list = list.filter((d) => d.interface === "Ethernet" && d.active);
     return [...list].sort((a, b) => {
       if (a.active !== b.active) return a.active ? -1 : 1;
-      const usageA = (a.wifi?.bytes_tx || 0) + (a.wifi?.bytes_rx || 0);
-      const usageB = (b.wifi?.bytes_tx || 0) + (b.wifi?.bytes_rx || 0);
-      if (usageA !== usageB) return usageB - usageA;
       return (a.hostname || "").localeCompare(b.hostname || "");
     });
   });
@@ -92,12 +89,12 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
       <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
         <table class="w-full table-fixed">
           <colgroup>
-            <col class="w-32 sm:w-40" />
+            <col />
+            <col class="w-0 sm:w-28" />
             <col class="w-0 sm:w-32" />
-            <col class="w-0 sm:w-36" />
             <col class="w-0 sm:w-20" />
-            <col />
-            <col />
+            <col class="w-0 sm:w-28" />
+            <col class="w-0 sm:w-28" />
             <col class="w-16" />
           </colgroup>
           <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
