@@ -50,8 +50,6 @@
 - Removed via `ncpa.cpl` → right-click → Delete.
 
 ## Open / pending
-- Enable IP forwarding (sysctl net.ipv4.ip_forward=1)
-- nftables base ruleset (NAT for VLAN 20+30, default-deny inter-VLAN)
 - dnsmasq for VLAN 20 and 30 DHCP
 - Pi-hole for DNS + visibility
 - ntopng for traffic dashboards
@@ -66,4 +64,5 @@
 - **Windows ARP cache** is sticky — `Remove-NetNeighbor -IPAddress X -Confirm:$false` (admin) when an IP changes hands.
 
 ## Verified
+- 2026-05-01: nftables + IP forwarding live (`pi/nftables.conf`). VLAN 30 → internet via NAT, VLAN 20 default-deny WAN, no IoT lateral to trusted. Persisted via `systemctl enable nftables`. Applied with a 60s safety auto-flush in case of lockout.
 - 2026-05-01: Fallback works. Pi reachable at `192.168.2.10` from both switch port 3 (trunk) and a Gigahub LAN port directly. Same DHCP reservation, same management IP either way. No ARP flush needed when moving between ports (only needed earlier when the IP itself changed).
