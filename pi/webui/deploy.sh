@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fast deploy. Skips work that hasn't changed.
+# Fast deploy. Skips work that hasn't changed. Times every critical section.
 set -e
 START=$(date +%s)
 
@@ -8,6 +8,16 @@ WEBUI="$REPO_ROOT/pi/webui"
 STAMP_DIR="$WEBUI/.deploy-stamps"
 mkdir -p "$STAMP_DIR"
 
+# step <label> <cmd...>  — runs cmd, prints "[deploy] label  Ns"
+step() {
+    local label=$1
+    shift
+    local s=$(date +%s)
+    "$@"
+    local d=$(($(date +%s) - s))
+    printf "[deploy] %-22s %2ds\n" "$label" "$d"
+}
+
 changed() {
     local file="$1"
     local stamp="$STAMP_DIR/$(basename "$file")"
@@ -15,59 +25,45 @@ changed() {
 }
 mark() { cp "$1" "$STAMP_DIR/$(basename "$1")"; }
 
-# 1. git pull (cheap)
-git -C "$REPO_ROOT" pull --ff-only -q
+step "git pull" git -C "$REPO_ROOT" pull --ff-only -q
 
-# 2. pip install only when requirements.txt changed
 [ -d "$WEBUI/venv" ] || python3 -m venv "$WEBUI/venv"
 if changed "$WEBUI/backend/requirements.txt"; then
-    echo "[deploy] pip install (changed)"
-    "$WEBUI/venv/bin/pip" install -q -r "$WEBUI/backend/requirements.txt"
+    step "pip install" "$WEBUI/venv/bin/pip" install -q -r "$WEBUI/backend/requirements.txt"
     mark "$WEBUI/backend/requirements.txt"
 fi
 
-# 3. npm install only when package.json or lock changed
 cd "$WEBUI/frontend"
 if [ ! -d node_modules ] || changed package.json || ([ -f package-lock.json ] && changed package-lock.json); then
-    echo "[deploy] npm install (changed)"
-    npm install --silent
+    step "npm install" npm install --silent
     mark package.json
     [ -f package-lock.json ] && mark package-lock.json
 fi
 
-# 4. Vite build (fast — no tsc)
-echo "[deploy] vite build"
-npx vite build --logLevel warn
+step "vite build" npx vite build --logLevel warn
 
-# 5. dnsmasq + nftables (idempotent, fast)
-cp "$REPO_ROOT/pi/dnsmasq.conf" /etc/dnsmasq.d/homelab.conf
-"$WEBUI/venv/bin/python" -c "
+step "dnsmasq config" cp "$REPO_ROOT/pi/dnsmasq.conf" /etc/dnsmasq.d/homelab.conf
+step "nftables apply" "$WEBUI/venv/bin/python" -c "
 import sys
 sys.path.insert(0, '$WEBUI')
 from backend.services import state, nftables
 nftables.apply(state.load())
 "
-systemctl reload-or-restart dnsmasq
+step "dnsmasq reload" systemctl reload-or-restart dnsmasq
 
-# 6. Systemd units (only update if templates changed)
 if changed "$WEBUI/homelab-ui.service.template"; then
-    sed -e "s|__WEBUI__|$WEBUI|g" -e "s|__REPO__|$REPO_ROOT|g" "$WEBUI/homelab-ui.service.template" > /etc/systemd/system/homelab-ui.service
+    step "ui service unit" bash -c "sed -e 's|__WEBUI__|$WEBUI|g' -e 's|__REPO__|$REPO_ROOT|g' '$WEBUI/homelab-ui.service.template' > /etc/systemd/system/homelab-ui.service && systemctl daemon-reload"
     mark "$WEBUI/homelab-ui.service.template"
-    systemctl daemon-reload
 fi
 if changed "$WEBUI/homelab-poll.service.template"; then
-    sed -e "s|__WEBUI__|$WEBUI|g" -e "s|__REPO__|$REPO_ROOT|g" "$WEBUI/homelab-poll.service.template" > /etc/systemd/system/homelab-poll.service
+    step "poll service unit" bash -c "sed -e 's|__WEBUI__|$WEBUI|g' -e 's|__REPO__|$REPO_ROOT|g' '$WEBUI/homelab-poll.service.template' > /etc/systemd/system/homelab-poll.service && systemctl daemon-reload"
     mark "$WEBUI/homelab-poll.service.template"
-    systemctl daemon-reload
 fi
 if changed "$WEBUI/homelab-poll.timer"; then
-    cp "$WEBUI/homelab-poll.timer" /etc/systemd/system/
+    step "poll timer" bash -c "cp '$WEBUI/homelab-poll.timer' /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now homelab-poll.timer >/dev/null"
     mark "$WEBUI/homelab-poll.timer"
-    systemctl daemon-reload
-    systemctl enable --now homelab-poll.timer >/dev/null
 fi
 
-# 7. Restart UI service (always, picks up new dist + code)
-systemctl restart homelab-ui
+step "ui restart" systemctl restart homelab-ui
 
-echo "[deploy] done in $(($(date +%s) - START))s — http://$(hostname -I | awk '{print $1}')"
+printf "[deploy] %-22s %2ds — http://%s\n" "TOTAL" "$(($(date +%s) - START))" "$(hostname -I | awk '{print $1}')"
