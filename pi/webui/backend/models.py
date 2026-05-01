@@ -37,6 +37,19 @@ class Vlan(BaseModel):
     devices: list[Device]
 
 
+class WifiStats(BaseModel):
+    ap_alias: str
+    signal_dbm: int
+    noise_dbm: int
+    tx_kbps: int
+    rx_kbps: int
+    uptime_sec: int
+    bytes_tx: int
+    bytes_rx: int
+    standard: str
+    security: str
+
+
 class GigahubDevice(BaseModel):
     mac: str
     ip: str
@@ -44,6 +57,7 @@ class GigahubDevice(BaseModel):
     interface: str
     active: bool
     last_seen: str
+    wifi: WifiStats | None = None
 
 
 class WifiRadio(BaseModel):

@@ -42,7 +42,9 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
           <colgroup>
             <col />
             <col class="w-0 sm:w-32" />
-            <col class="w-0 sm:w-44" />
+            <col class="w-0 sm:w-40" />
+            <col class="w-0 sm:w-24" />
+            <col class="w-0 sm:w-28" />
             <col class="w-20" />
           </colgroup>
           <thead class="bg-[#1c2128] text-xs uppercase tracking-wide text-[var(--color-muted)]">
@@ -50,19 +52,27 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
               <th class="px-3 py-2 text-left">hostname</th>
               <th class="px-3 py-2 text-left hidden sm:table-cell">IP</th>
               <th class="px-3 py-2 text-left hidden sm:table-cell">MAC</th>
+              <th class="px-3 py-2 text-right hidden sm:table-cell">signal</th>
+              <th class="px-3 py-2 text-right hidden sm:table-cell">link rate</th>
               <th class="px-3 py-2 text-right">link</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--color-border)]">
             <Show when={devices().length > 0} fallback={
-              <tr><td colspan="4" class="px-3 py-6 text-center text-[var(--color-muted)]">no devices</td></tr>
+              <tr><td colspan="6" class="px-3 py-6 text-center text-[var(--color-muted)]">no devices</td></tr>
             }>
               <For each={devices()}>
                 {(d) => (
                   <tr class={d.active ? "" : "opacity-50"}>
                     <td class="px-3 py-2 truncate">{d.hostname}</td>
-                    <td class="px-3 py-2 font-mono text-sm hidden sm:table-cell truncate">{d.ip || "—"}</td>
+                    <td class="px-3 py-2 font-mono text-sm hidden sm:table-cell truncate">{d.ip || "-"}</td>
                     <td class="px-3 py-2 font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell truncate">{d.mac}</td>
+                    <td class="px-3 py-2 text-right font-mono text-xs hidden sm:table-cell">
+                      {d.wifi ? <SignalCell dbm={d.wifi.signal_dbm} /> : <span class="text-[var(--color-muted)]">-</span>}
+                    </td>
+                    <td class="px-3 py-2 text-right font-mono text-xs text-[var(--color-muted)] hidden sm:table-cell">
+                      {d.wifi ? `${(d.wifi.rx_kbps / 1000).toFixed(0)}/${(d.wifi.tx_kbps / 1000).toFixed(0)} Mbps` : "-"}
+                    </td>
                     <td class="px-3 py-2 text-right text-xs">
                       <span class={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono ${
                         d.interface === "WiFi"
@@ -83,6 +93,17 @@ export const GigahubTable: Component<{ info: GigahubInfo }> = (props) => {
       <div class="text-[10px] text-[var(--color-muted)] mt-1 text-right">last refresh: {lastUpdate()}</div>
     </div>
   );
+};
+
+const SignalCell: Component<{ dbm: number }> = (p) => {
+  const colour = () => {
+    if (p.dbm === 0) return "text-[var(--color-muted)]";
+    if (p.dbm >= -55) return "text-[var(--color-up)]";
+    if (p.dbm >= -70) return "text-[var(--color-warn)]";
+    if (p.dbm >= -80) return "text-[var(--color-low)]";
+    return "text-[var(--color-down)]";
+  };
+  return <span class={colour()}>{p.dbm === 0 ? "-" : `${p.dbm} dBm`}</span>;
 };
 
 const FilterButton: Component<{ current: string; value: string; onClick: () => void; children: any }> = (p) => (

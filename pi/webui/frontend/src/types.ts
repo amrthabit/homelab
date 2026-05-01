@@ -44,6 +44,19 @@ export type HistoryPoint = {
   ts: number;
 };
 
+export type WifiStats = {
+  ap_alias: string;
+  signal_dbm: number;
+  noise_dbm: number;
+  tx_kbps: number;
+  rx_kbps: number;
+  uptime_sec: number;
+  bytes_tx: number;
+  bytes_rx: number;
+  standard: string;
+  security: string;
+};
+
 export type GigahubDevice = {
   mac: string;
   ip: string;
@@ -51,6 +64,7 @@ export type GigahubDevice = {
   interface: string;
   active: boolean;
   last_seen: string;
+  wifi?: WifiStats | null;
 };
 
 export type WifiRadio = {

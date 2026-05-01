@@ -15,6 +15,13 @@ _lock = asyncio.Lock()
 _cache.update({"radios": [], "ssids": []})
 
 
+def _safe_int(v) -> int:
+    try:
+        return int(v) if v is not None else 0
+    except Exception:
+        return 0
+
+
 async def _fetch() -> dict:
     async with SagemcomClient(
         config.GIGAHUB_HOST,
@@ -28,18 +35,41 @@ async def _fetch() -> dict:
         ssids_raw = await client.get_value_by_xpath("Device/WiFi/SSIDs")
         aps_raw = await client.get_value_by_xpath("Device/WiFi/AccessPoints")
 
-        devices = [
-            {
-                "mac": (d.phys_address or "").lower(),
+        # Build a MAC -> Wi-Fi association stats map by walking all APs
+        wifi_stats: dict[str, dict] = {}
+        for ap in (aps_raw or []):
+            for ad in (ap.get("associated_devices") or []):
+                mac = (ad.get("mac_address") or "").lower()
+                if not mac:
+                    continue
+                stats = ad.get("stats") or {}
+                wifi_stats[mac] = {
+                    "ap_alias": ap.get("alias", ""),
+                    "signal_dbm": _safe_int(ad.get("signal_strength")),
+                    "noise_dbm": _safe_int(ad.get("noise")),
+                    "tx_kbps": _safe_int(ad.get("last_data_uplink_rate")),  # client -> AP
+                    "rx_kbps": _safe_int(ad.get("last_data_downlink_rate")),  # AP -> client
+                    "uptime_sec": _safe_int(ad.get("uptime")),
+                    "bytes_tx": _safe_int(stats.get("bytes_sent")),
+                    "bytes_rx": _safe_int(stats.get("bytes_received")),
+                    "standard": ad.get("operating_standard", ""),
+                    "security": ad.get("security_mode", ""),
+                }
+
+        devices = []
+        for d in raw_hosts:
+            if not d.phys_address:
+                continue
+            mac = d.phys_address.lower()
+            devices.append({
+                "mac": mac,
                 "ip": d.ip_address or "",
-                "hostname": d.user_host_name or d.host_name or "—",
-                "interface": d.interface_type or "—",
+                "hostname": d.user_host_name or d.host_name or "-",
+                "interface": d.interface_type or "-",
                 "active": d.active,
                 "last_seen": d.active_last_change or "",
-            }
-            for d in raw_hosts
-            if d.phys_address
-        ]
+                "wifi": wifi_stats.get(mac),
+            })
 
         radios = [
             {
