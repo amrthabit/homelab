@@ -51,9 +51,15 @@
                 <col class="ip hide-mobile">
                 <col class="mac hide-mobile">
                 <col class="spark hide-mobile">
-                {% if 'IoT' in vlan or 'Trusted' in vlan %}<col class="wan">{% endif %}
+                <col class="wan">
             </colgroup>
-            <thead><tr><th>hostname</th><th class="hide-mobile">IP</th><th class="hide-mobile">MAC</th><th class="hide-mobile">24h</th>{% if 'IoT' in vlan or 'Trusted' in vlan %}<th>WAN</th>{% endif %}</tr></thead>
+            <thead><tr>
+                <th>hostname</th>
+                <th class="hide-mobile">IP</th>
+                <th class="hide-mobile">MAC</th>
+                <th class="hide-mobile">24h</th>
+                <th>{% if 'IoT' in vlan or 'Trusted' in vlan %}WAN{% endif %}</th>
+            </tr></thead>
             <tbody>
             {% for l in items %}
                 <tr class="device-row" data-mac="{{ l.mac }}">
@@ -87,6 +93,8 @@
                             </button>
                         </form>
                     </td>
+                    {% else %}
+                    <td></td>
                     {% endif %}
                 </tr>
                 <tr class="history-row" data-mac-target="{{ l.mac }}" hidden>
