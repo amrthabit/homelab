@@ -64,3 +64,6 @@
 - **Paragon Linux File Systems writes are buffered.** Always check that changes actually persisted after eject — verify by re-reading the file from inside Linux.
 - **Removable USB SD readers can't be `wsl --mount`** ed because Windows refuses `Set-Disk -IsOffline` on removable media.
 - **Windows ARP cache** is sticky — `Remove-NetNeighbor -IPAddress X -Confirm:$false` (admin) when an IP changes hands.
+
+## Verified
+- 2026-05-01: Fallback works. Pi reachable at `192.168.2.10` from both switch port 3 (trunk) and a Gigahub LAN port directly. Same DHCP reservation, same management IP either way. No ARP flush needed when moving between ports (only needed earlier when the IP itself changed).
