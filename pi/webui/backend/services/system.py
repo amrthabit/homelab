@@ -1,4 +1,5 @@
 """System stats — uptime, load, memory, temperature."""
+import os
 from pathlib import Path
 from .sh import sh
 from ..models import Stats
@@ -6,13 +7,15 @@ from ..models import Stats
 
 def stats() -> Stats:
     raw = sh(["uptime", "-p"])
-    # `uptime -p` returns e.g. "up 1 day, 3 hours, 25 minutes" — keep largest unit only.
     if raw.startswith("up "):
         first = raw[3:].split(",")[0].strip()
         uptime = f"up {first}" if first else raw
     else:
         uptime = raw
-    load = Path("/proc/loadavg").read_text().split()[:3]
+    load_parts = Path("/proc/loadavg").read_text().split()[:3]
+    ncpu = os.cpu_count() or 1
+    load1 = float(load_parts[0])
+    load_pct = round(load1 / ncpu * 100, 1)
     meminfo = Path("/proc/meminfo").read_text().splitlines()
     mem_total = int(meminfo[0].split()[1])
     mem_avail = int(meminfo[2].split()[1])
@@ -20,7 +23,7 @@ def stats() -> Stats:
     temp = sh(["vcgencmd", "measure_temp"]).replace("temp=", "")
     return Stats(
         uptime=uptime,
-        load=" ".join(load),
+        load=f"{load_pct}%",
         mem_used_pct=mem_used_pct,
         mem_total_gb=round(mem_total / 1024 / 1024, 1),
         temp=temp,

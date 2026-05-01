@@ -78,6 +78,8 @@ def system_metrics(ts: int) -> list[tuple[str, int, float]]:
     try:
         load1 = float(Path("/proc/loadavg").read_text().split()[0])
         rows.append(("system.load1", ts, load1))
+        ncpu = os.cpu_count() or 1
+        rows.append(("system.load_pct", ts, round(load1 / ncpu * 100, 1)))
     except Exception:
         pass
     try:

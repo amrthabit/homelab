@@ -5,7 +5,7 @@ import { getMetric } from "../api";
 const fetchMetric = (key: string) => () => getMetric(key, 24);
 
 export const SystemCharts: Component = () => {
-  const [load] = createResource(fetchMetric("system.load1"));
+  const [load] = createResource(fetchMetric("system.load_pct"));
   const [mem] = createResource(fetchMetric("system.mem_used_pct"));
   const [temp] = createResource(fetchMetric("system.temp"));
 
@@ -16,7 +16,9 @@ export const SystemCharts: Component = () => {
         <Chart
           data={load()?.points ?? []}
           color="var(--color-accent)"
-          formatY={(v) => v.toFixed(2)}
+          yMin={0}
+          yMax={100}
+          formatY={(v) => `${v.toFixed(0)}%`}
           filled
         />
       </div>
