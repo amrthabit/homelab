@@ -1,29 +1,41 @@
 import { createSignal, onCleanup, onMount, For, Show, type Component } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import type { Snapshot } from "./types";
 import { getSnapshot, subscribeSnapshot, toggleKey } from "./api";
 import { ToggleCard } from "./components/Toggle";
 import { DeviceTable } from "./components/DeviceTable";
 
+const EMPTY_SNAPSHOT: Snapshot = {
+  state: { vlan10_to_vlan30: false, vlan20_wan: false, iot_wan_macs: [], trusted_wan_blocked_macs: [] },
+  stats: { uptime: "", load: "", mem_used_pct: 0, mem_total_gb: 0, temp: "" },
+  vlans: [],
+  interfaces: "",
+  routes: "",
+  firewall: "",
+};
+
 const App: Component = () => {
-  const [snap, setSnap] = createSignal<Snapshot | null>(null);
+  const [snap, setSnap] = createStore<Snapshot>(EMPTY_SNAPSHOT);
+  const [loaded, setLoaded] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
+  const update = (next: Snapshot) => {
+    setSnap(reconcile(next, { merge: true }));
+    setLoaded(true);
+    setError(null);
+  };
+
   onMount(() => {
-    // Initial load via fetch (so we render fast even before SSE is up)
-    getSnapshot().then(setSnap).catch((e) => setError(String(e)));
-    // Then live updates via SSE
-    const close = subscribeSnapshot((s) => {
-      setSnap(s);
-      setError(null);
-    });
+    getSnapshot().then(update).catch((e) => setError(String(e)));
+    const close = subscribeSnapshot(update);
     onCleanup(() => close());
   });
 
   const handleToggle = async (key: string) => {
     try {
       const res = await toggleKey(key);
-      // SSE will follow up; but optimistic update so UI is snappy
-      setSnap((s) => (s ? { ...s, state: res.state } : s));
+      // Apply optimistic state update; SSE will reconcile
+      setSnap("state", reconcile(res.state));
     } catch (e) {
       setError(String(e));
     }
@@ -37,57 +49,53 @@ const App: Component = () => {
         </div>
       </Show>
 
-      <Show when={snap()} fallback={<div class="text-[var(--color-muted)]">loading…</div>}>
-        {(snap) => (
-          <>
-            <Show when={snap().state.vlan20_wan}>
-              <div class="border border-[var(--color-low)] bg-[#2d2010] text-[var(--color-low)] rounded-md px-4 py-3 text-sm">
-                ⚠ Blanket VLAN 20 WAN is ON — all IoT devices reach the internet regardless of per-device toggle. Per-device states are preserved; turn blanket OFF to apply them.
-              </div>
-            </Show>
+      <Show when={loaded()} fallback={<div class="text-[var(--color-muted)]">loading…</div>}>
+        <Show when={snap.state.vlan20_wan}>
+          <div class="border border-[var(--color-low)] bg-[#2d2010] text-[var(--color-low)] rounded-md px-4 py-3 text-sm">
+            ⚠ Blanket VLAN 20 WAN is ON — all IoT devices reach the internet regardless of per-device toggle. Per-device states are preserved; turn blanket OFF to apply them.
+          </div>
+        </Show>
 
-            <section>
-              <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">system</h2>
-              <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Stat k="uptime" v={snap().stats.uptime} />
-                <Stat k="load" v={snap().stats.load} />
-                <Stat k="memory" v={`${snap().stats.mem_used_pct}% / ${snap().stats.mem_total_gb} GiB`} />
-                <Stat k="temp" v={snap().stats.temp} />
-              </div>
-            </section>
+        <section>
+          <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">system</h2>
+          <div class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Stat k="uptime" v={snap.stats.uptime} />
+            <Stat k="load" v={snap.stats.load} />
+            <Stat k="memory" v={`${snap.stats.mem_used_pct}% / ${snap.stats.mem_total_gb} GiB`} />
+            <Stat k="temp" v={snap.stats.temp} />
+          </div>
+        </section>
 
-            <section>
-              <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">toggles</h2>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ToggleCard
-                  label="VLAN 10 → VLAN 30"
-                  desc="laptop access to trusted services (HA, Proxmox)"
-                  on={snap().state.vlan10_to_vlan30}
-                  onClick={() => handleToggle("vlan10_to_vlan30")}
-                />
-                <ToggleCard
-                  label="VLAN 20 internet (blanket)"
-                  desc="forces WAN ON for all IoT — overrides per-device list"
-                  on={snap().state.vlan20_wan}
-                  onClick={() => handleToggle("vlan20_wan")}
-                />
-              </div>
-            </section>
+        <section>
+          <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">toggles</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ToggleCard
+              label="VLAN 10 → VLAN 30"
+              desc="laptop access to trusted services (HA, Proxmox)"
+              on={snap.state.vlan10_to_vlan30}
+              onClick={() => handleToggle("vlan10_to_vlan30")}
+            />
+            <ToggleCard
+              label="VLAN 20 internet (blanket)"
+              desc="forces WAN ON for all IoT — overrides per-device list"
+              on={snap.state.vlan20_wan}
+              onClick={() => handleToggle("vlan20_wan")}
+            />
+          </div>
+        </section>
 
-            <For each={snap().vlans}>
-              {(vlan) => <DeviceTable vlan={vlan} state={snap().state} />}
-            </For>
+        <For each={snap.vlans}>
+          {(vlan) => <DeviceTable vlan={vlan} state={snap.state} />}
+        </For>
 
-            <details class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)]">
-              <summary class="px-4 py-3 cursor-pointer text-xs uppercase tracking-wide text-[var(--color-muted)]">debug</summary>
-              <div class="p-4 space-y-4">
-                <Pre title="interfaces" body={snap().interfaces} />
-                <Pre title="routes" body={snap().routes} />
-                <Pre title="firewall" body={snap().firewall} />
-              </div>
-            </details>
-          </>
-        )}
+        <details class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)]">
+          <summary class="px-4 py-3 cursor-pointer text-xs uppercase tracking-wide text-[var(--color-muted)]">debug</summary>
+          <div class="p-4 space-y-4">
+            <Pre title="interfaces" body={snap.interfaces} />
+            <Pre title="routes" body={snap.routes} />
+            <Pre title="firewall" body={snap.firewall} />
+          </div>
+        </details>
       </Show>
     </main>
   );
