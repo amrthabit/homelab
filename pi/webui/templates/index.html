@@ -46,7 +46,7 @@
     <section>
         <h2>{{ vlan }}</h2>
         <table>
-            <thead><tr><th>hostname</th><th>IP</th><th>MAC</th>{% if 'IoT' in vlan %}<th>WAN</th>{% endif %}</tr></thead>
+            <thead><tr><th>hostname</th><th>IP</th><th>MAC</th>{% if 'IoT' in vlan or 'Trusted' in vlan %}<th>WAN</th>{% endif %}</tr></thead>
             <tbody>
             {% for l in items %}
                 <tr>
@@ -61,6 +61,15 @@
                             <button class="mini-toggle {% if effective %}on{% else %}off{% endif %} {% if state.vlan20_wan %}forced{% endif %}" type="submit"
                                     title="{% if state.vlan20_wan %}forced ON by blanket; stored: {{ 'ON' if stored else 'OFF' }}{% endif %}">
                                 {{ 'ON' if effective else 'OFF' }}{% if state.vlan20_wan and not stored %}*{% endif %}
+                            </button>
+                        </form>
+                    </td>
+                    {% elif 'Trusted' in vlan %}
+                    {% set blocked = l.mac in trusted_wan_blocked_macs %}
+                    <td>
+                        <form action="{{ url_for('toggle_trusted_wan', mac=l.mac) }}" method="post" style="margin:0">
+                            <button class="mini-toggle {% if not blocked %}on{% else %}off{% endif %}" type="submit">
+                                {{ 'OFF' if blocked else 'ON' }}
                             </button>
                         </form>
                     </td>

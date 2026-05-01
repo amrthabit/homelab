@@ -10,6 +10,13 @@ table inet filter {
         {% endif %}
     }
 
+    set trusted_wan_blocked {
+        type ether_addr
+        {% if state.trusted_wan_blocked_macs %}
+        elements = { {{ state.trusted_wan_blocked_macs | join(', ') }} }
+        {% endif %}
+    }
+
     chain input {
         type filter hook input priority filter; policy drop;
 
@@ -37,7 +44,8 @@ table inet filter {
         ct state established,related accept comment "established conns"
         ct state invalid drop comment "invalid"
 
-        iifname "eth0.30" oifname "eth0" accept comment "trusted → internet"
+        iifname "eth0.30" oifname "eth0" ether saddr @trusted_wan_blocked drop comment "trusted MAC blocked from WAN"
+        iifname "eth0.30" oifname "eth0" accept comment "trusted → internet (default)"
         iifname "eth0.30" oifname "eth0.20" accept comment "trusted → IoT"
 
         {% if state.vlan10_to_vlan30 %}

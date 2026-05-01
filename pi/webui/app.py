@@ -16,6 +16,7 @@ DEFAULT_STATE = {
     "vlan10_to_vlan30": True,
     "vlan20_wan": False,
     "iot_wan_macs": [],
+    "trusted_wan_blocked_macs": [],
 }
 
 app = Flask(__name__)
@@ -110,6 +111,7 @@ def index():
         "index.html",
         state=state,
         iot_wan_macs=set(state.get("iot_wan_macs", [])),
+        trusted_wan_blocked_macs=set(state.get("trusted_wan_blocked_macs", [])),
         interfaces=get_interfaces(),
         routes=get_routes(),
         firewall=get_firewall(),
@@ -133,15 +135,27 @@ def toggle(key):
 
 @app.route("/iot_wan/<mac>", methods=["POST"])
 def toggle_iot_wan(mac):
-    """Toggle internet access for a single IoT device by MAC."""
+    """Toggle internet access for a single IoT device (allowlist)."""
     state = load_state()
     macs = set(state.get("iot_wan_macs", []))
     mac = mac.lower()
-    if mac in macs:
-        macs.remove(mac)
-    else:
-        macs.add(mac)
+    macs.discard(mac) if mac in macs else macs.add(mac)
     state["iot_wan_macs"] = sorted(macs)
+    save_state(state)
+    ok, msg = apply_nftables(state)
+    if not ok:
+        return jsonify({"error": msg}), 500
+    return redirect(url_for("index"))
+
+
+@app.route("/trusted_wan/<mac>", methods=["POST"])
+def toggle_trusted_wan(mac):
+    """Toggle internet access for a single trusted device (blocklist; default allowed)."""
+    state = load_state()
+    blocked = set(state.get("trusted_wan_blocked_macs", []))
+    mac = mac.lower()
+    blocked.discard(mac) if mac in blocked else blocked.add(mac)
+    state["trusted_wan_blocked_macs"] = sorted(blocked)
     save_state(state)
     ok, msg = apply_nftables(state)
     if not ok:
