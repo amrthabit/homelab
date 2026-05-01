@@ -4,11 +4,13 @@ import type { Snapshot } from "./types";
 import { getSnapshot, subscribeSnapshot, toggleKey } from "./api";
 import { ToggleCard } from "./components/Toggle";
 import { DeviceTable } from "./components/DeviceTable";
+import { GigahubTable } from "./components/GigahubTable";
 
 const EMPTY_SNAPSHOT: Snapshot = {
   state: { vlan10_to_vlan30: false, vlan20_wan: false, iot_wan_macs: [], trusted_wan_blocked_macs: [] },
   stats: { uptime: "", load: "", mem_used_pct: 0, mem_total_gb: 0, temp: "" },
   vlans: [],
+  gigahub: { devices: [], ts: 0, error: null },
   interfaces: "",
   routes: "",
   firewall: "",
@@ -87,6 +89,8 @@ const App: Component = () => {
         <For each={snap.vlans}>
           {(vlan) => <DeviceTable vlan={vlan} state={snap.state} />}
         </For>
+
+        <GigahubTable info={snap.gigahub} />
 
         <details class="rounded-md border border-[var(--color-border)] bg-[var(--color-card)]">
           <summary class="px-4 py-3 cursor-pointer text-xs uppercase tracking-wide text-[var(--color-muted)]">debug</summary>

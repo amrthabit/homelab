@@ -37,10 +37,26 @@ class Vlan(BaseModel):
     devices: list[Device]
 
 
+class GigahubDevice(BaseModel):
+    mac: str
+    ip: str
+    hostname: str
+    interface: str  # "WiFi" or "Ethernet"
+    active: bool
+    last_seen: str
+
+
+class GigahubInfo(BaseModel):
+    devices: list[GigahubDevice]
+    ts: int
+    error: str | None
+
+
 class Snapshot(BaseModel):
     state: State
     stats: Stats
     vlans: list[Vlan]
+    gigahub: GigahubInfo
     interfaces: str
     routes: str
     firewall: str

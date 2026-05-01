@@ -16,6 +16,10 @@ LEASES_FILE = Path("/var/lib/misc/dnsmasq.leases")
 SPARK_HOURS = 48
 HISTORY_DAYS = 30
 SNAPSHOT_INTERVAL_SEC = 5  # how often the SSE stream refreshes
+GIGAHUB_HOST = "192.168.2.1"
+GIGAHUB_USER = "guest"
+GIGAHUB_PASS = ""
+GIGAHUB_REFRESH_SEC = 30  # how often to poll Gigahub (slower than snapshot tick)
 
 DEFAULT_STATE = {
     "vlan10_to_vlan30": True,

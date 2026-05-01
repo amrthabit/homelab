@@ -8,15 +8,20 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .routers import api as api_router
+from .services import gigahub
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(api_router.periodic_broadcast())
+    tasks = [
+        asyncio.create_task(api_router.periodic_broadcast()),
+        asyncio.create_task(gigahub.periodic()),
+    ]
     try:
         yield
     finally:
-        task.cancel()
+        for t in tasks:
+            t.cancel()
 
 
 app = FastAPI(title="homelab", lifespan=lifespan)

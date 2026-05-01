@@ -44,10 +44,26 @@ export type HistoryPoint = {
   ts: number;
 };
 
+export type GigahubDevice = {
+  mac: string;
+  ip: string;
+  hostname: string;
+  interface: string;
+  active: boolean;
+  last_seen: string;
+};
+
+export type GigahubInfo = {
+  devices: GigahubDevice[];
+  ts: number;
+  error: string | null;
+};
+
 export type Snapshot = {
   state: State;
   stats: Stats;
   vlans: Vlan[];
+  gigahub: GigahubInfo;
   interfaces: string;
   routes: string;
   firewall: string;
