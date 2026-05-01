@@ -28,7 +28,7 @@ def vlans() -> list[Vlan]:
         for s in config.STATIC_DEVICES
     ]
     return [
+        Vlan(name="VLAN 10 + Mgmt", kind="mgmt", devices=mgmt),
         Vlan(name="VLAN 20 (IoT)", kind="iot", devices=iot),
         Vlan(name="VLAN 30 (Trusted)", kind="trusted", devices=trusted),
-        Vlan(name="VLAN 10 + Mgmt", kind="mgmt", devices=mgmt),
     ]
