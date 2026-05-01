@@ -3,6 +3,13 @@
 flush ruleset
 
 table inet filter {
+    set iot_wan_allowed {
+        type ether_addr
+        {% if state.iot_wan_macs %}
+        elements = { {{ state.iot_wan_macs | join(', ') }} }
+        {% endif %}
+    }
+
     chain input {
         type filter hook input priority filter; policy drop;
 
@@ -38,7 +45,9 @@ table inet filter {
         {% endif %}
 
         {% if state.vlan20_wan %}
-        iifname "eth0.20" oifname "eth0" accept comment "IoT → internet [TOGGLE]"
+        iifname "eth0.20" oifname "eth0" accept comment "IoT → internet [BLANKET]"
+        {% else %}
+        iifname "eth0.20" oifname "eth0" ether saddr @iot_wan_allowed accept comment "IoT → internet [PER-MAC]"
         {% endif %}
     }
 

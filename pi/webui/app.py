@@ -15,6 +15,7 @@ NFTABLES_TEMPLATE = APP_DIR / "templates" / "nftables.conf.j2"
 DEFAULT_STATE = {
     "vlan10_to_vlan30": True,
     "vlan20_wan": False,
+    "iot_wan_macs": [],
 }
 
 app = Flask(__name__)
@@ -108,6 +109,7 @@ def index():
     return render_template(
         "index.html",
         state=state,
+        iot_wan_macs=set(state.get("iot_wan_macs", [])),
         interfaces=get_interfaces(),
         routes=get_routes(),
         firewall=get_firewall(),
@@ -119,9 +121,27 @@ def index():
 @app.route("/toggle/<key>", methods=["POST"])
 def toggle(key):
     state = load_state()
-    if key not in state:
-        return jsonify({"error": "unknown key"}), 400
+    if key not in state or not isinstance(state[key], bool):
+        return jsonify({"error": "unknown bool key"}), 400
     state[key] = not state[key]
+    save_state(state)
+    ok, msg = apply_nftables(state)
+    if not ok:
+        return jsonify({"error": msg}), 500
+    return redirect(url_for("index"))
+
+
+@app.route("/iot_wan/<mac>", methods=["POST"])
+def toggle_iot_wan(mac):
+    """Toggle internet access for a single IoT device by MAC."""
+    state = load_state()
+    macs = set(state.get("iot_wan_macs", []))
+    mac = mac.lower()
+    if mac in macs:
+        macs.remove(mac)
+    else:
+        macs.add(mac)
+    state["iot_wan_macs"] = sorted(macs)
     save_state(state)
     ok, msg = apply_nftables(state)
     if not ok:

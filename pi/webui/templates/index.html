@@ -42,12 +42,25 @@
     <section>
         <h2>{{ vlan }}</h2>
         <table>
-            <thead><tr><th>hostname</th><th>IP</th><th>MAC</th></tr></thead>
+            <thead><tr><th>hostname</th><th>IP</th><th>MAC</th>{% if 'IoT' in vlan %}<th>WAN</th>{% endif %}</tr></thead>
             <tbody>
             {% for l in items %}
-                <tr><td>{{ l.hostname }}</td><td class="mono">{{ l.ip }}</td><td class="mono">{{ l.mac }}</td></tr>
+                <tr>
+                    <td>{{ l.hostname }}</td>
+                    <td class="mono">{{ l.ip }}</td>
+                    <td class="mono">{{ l.mac }}</td>
+                    {% if 'IoT' in vlan %}
+                    <td>
+                        <form action="{{ url_for('toggle_iot_wan', mac=l.mac) }}" method="post" style="margin:0">
+                            <button class="mini-toggle {% if l.mac in iot_wan_macs %}on{% else %}off{% endif %}" type="submit">
+                                {{ 'ON' if l.mac in iot_wan_macs else 'OFF' }}
+                            </button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
             {% else %}
-                <tr><td colspan="3" class="empty">no devices</td></tr>
+                <tr><td colspan="4" class="empty">no devices</td></tr>
             {% endfor %}
             </tbody>
         </table>
