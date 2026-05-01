@@ -23,11 +23,12 @@ table.devices { width: 100%; border-collapse: collapse; background: #161b22; bor
 .history-cell { aspect-ratio: 1; border-radius: 1px; }
 .history-legend { color: #6e7681; font-size: 0.7rem; margin-top: 0.5rem; }
 
-.spark { display: inline-flex; align-items: flex-end; gap: 1px; height: 24px; }
-.spark .bar { display: inline-block; width: 4px; min-height: 2px; border-radius: 1px; }
+.spark { display: inline-flex; align-items: stretch; gap: 1px; height: 20px; }
+.spark .bar { display: inline-block; width: 5px; height: 100%; border-radius: 1px; }
 .full, .spark .bar.full { background: #2ea043; }
 .mid, .spark .bar.mid { background: #d29922; }
-.low, .spark .bar.low { background: #f85149; }
+.low, .spark .bar.low { background: #f0883e; }
+.off, .spark .bar.off { background: #f85149; }
 .gap, .spark .bar.gap { background: #30363d; }
 
 tr.device-row:last-child td { border-bottom: none; }
@@ -52,3 +53,22 @@ tr.device-row:last-child td { border-bottom: none; }
 .mini-toggle.forced { opacity: 0.7; border-style: dashed; }
 
 .banner { background: #2d2010; border: 1px solid #f0883e; color: #f0a85d; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+.mobile-only { display: none; }
+.device-detail { display: grid; gap: 0.75rem; padding: 0.5rem 0 1rem 0; border-bottom: 1px solid #30363d; margin-bottom: 1rem; }
+.device-detail > div { display: flex; align-items: center; gap: 0.75rem; }
+.device-detail .k { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #8b949e; min-width: 40px; }
+.device-detail .v { flex: 1; }
+
+@media (max-width: 640px) {
+    main { padding: 1rem 0.75rem; }
+    .hide-mobile { display: none !important; }
+    .mobile-only { display: block; }
+    .devices th, .devices td { padding: 0.5rem 0.75rem; }
+    .toggle-grid { grid-template-columns: 1fr; }
+    .stats-card { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .history-grid { grid-template-columns: repeat(45, 1fr) !important; }
+    .history-grid .history-cell:nth-child(n+46) { display: none; }
+    .history-legend { font-size: 0.65rem !important; }
+    pre { font-size: 0.75rem; }
+}
