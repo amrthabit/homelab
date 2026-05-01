@@ -172,10 +172,6 @@ document.querySelectorAll('.device-row').forEach(row => {
             });
             scroller.appendChild(spark);
             cell.appendChild(scroller);
-            const legend = document.createElement('div');
-            legend.className = 'history-legend';
-            legend.textContent = '90 days — each bar = 1 hour, scroll horizontally';
-            cell.appendChild(legend);
         } catch (err) {
             cell.innerHTML = '<div class="history-loading">error: ' + err + '</div>';
         }
