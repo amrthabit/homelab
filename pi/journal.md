@@ -29,11 +29,14 @@
 - Solution: **Paragon Linux File Systems for Windows** trial via `winget install Paragon.LinuxFileSystems`. Mounted ext4 partition as G: drive. Edited `/etc/network/interfaces` and `/etc/network/interfaces.d/vlans` directly from Windows.
 
 ### Final working config
-- `/etc/network/interfaces` — minimal: `source interfaces.d/*` + `allow-hotplug eth0` + `iface eth0 inet dhcp` (rescue fallback).
-- `/etc/network/interfaces.d/vlans` — VLAN sub-interfaces only, no `iface eth0` stanza. Added `metric 100` on eth0.10's gateway so eth0's DHCP route is preferred when both have a gateway to 192.168.2.1.
+- `/etc/network/interfaces` — minimal: `source interfaces.d/*` + `allow-hotplug eth0` + `iface eth0 inet dhcp`.
+- `/etc/network/interfaces.d/vlans` — only eth0.20 and eth0.30 sub-interfaces. **No eth0.10** — it conflicts with eth0 (both on 192.168.2.x).
+- Switch port 3 changed: PVID 10 (was 1), untagged member of VLAN 10 (was tagged). Pi's eth0 untagged traffic flows on VLAN 10 → reaches Gigahub for DHCP.
+- DHCP reservation on Gigahub: MAC `2c:cf:67:0a:97:12` → `192.168.2.10` (Gigahub range starts at .10, can't use .2).
 - Behaviour:
-  - On Gigahub direct: eth0 gets DHCP IP, gateway via DHCP. SSH works at the DHCP'd IP. eth0.10 has static IP but no real traffic (no VLAN tags coming in).
-  - On switch trunk port 3: eth0 DHCP fails (PVID 1 = VLAN 1, no DHCP server). eth0.10 has static `192.168.2.2` and gateway `192.168.2.1`. SSH at `.2`.
+  - On switch port 3: eth0 gets `.10` via DHCP through VLAN 10 trunk. eth0.20/30 work with tagged traffic.
+  - On Gigahub direct: eth0 gets `.10` via DHCP (same reservation). eth0.20/30 still up but unused (no VLAN tags from Gigahub).
+  - Stable management at `192.168.2.10` regardless of where Pi is plugged in.
 
 ## Switch (TL-SG108E)
 - Default switch IP: assigned by Gigahub DHCP (`192.168.2.153`). Default login `admin`/`admin`. Changed admin password.
@@ -47,5 +50,17 @@
 - Removed via `ncpa.cpl` → right-click → Delete.
 
 ## Open / pending
-- VLAN sub-interfaces will conflict with eth0 DHCP if both come up on the same subnet (192.168.2.x). Mitigated with `metric 100` but worth watching for routing weirdness.
-- Reserve `192.168.2.2` on Gigahub DHCP so it's never handed to another device.
+- Enable IP forwarding (sysctl net.ipv4.ip_forward=1)
+- nftables base ruleset (NAT for VLAN 20+30, default-deny inter-VLAN)
+- dnsmasq for VLAN 20 and 30 DHCP
+- Pi-hole for DNS + visibility
+- ntopng for traffic dashboards
+- MAC registry + Flask approval UI
+
+## Lessons
+- **Always keep a DHCP fallback on eth0** so the Pi is never stranded.
+- **A port can only be untagged in one VLAN.** Untagged in two = traffic leaks.
+- **Same-subnet IPs on parent + VLAN sub-interface = broken routing.** Either pick different subnets or drop the VLAN sub-interface for that VLAN.
+- **Paragon Linux File Systems writes are buffered.** Always check that changes actually persisted after eject — verify by re-reading the file from inside Linux.
+- **Removable USB SD readers can't be `wsl --mount`** ed because Windows refuses `Set-Disk -IsOffline` on removable media.
+- **Windows ARP cache** is sticky — `Remove-NetNeighbor -IPAddress X -Confirm:$false` (admin) when an IP changes hands.
