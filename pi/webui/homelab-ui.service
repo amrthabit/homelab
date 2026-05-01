@@ -1,0 +1,15 @@
+[Unit]
+Description=Homelab control plane web UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/homelab/venv/bin/python /opt/homelab/app.py
+WorkingDirectory=/opt/homelab
+Restart=on-failure
+RestartSec=2
+User=root
+
+[Install]
+WantedBy=multi-user.target

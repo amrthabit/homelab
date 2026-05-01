@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>homelab control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+    <h1>homelab</h1>
+    <div class="stats">
+        <span>{{ stats.uptime }}</span>
+        <span>load {{ stats.load }}</span>
+        <span>mem {{ stats.mem_used_pct }}% / {{ stats.mem_total_gb }} GiB</span>
+        <span>{{ stats.temp }}</span>
+    </div>
+</header>
+
+<main>
+    <section>
+        <h2>toggles</h2>
+        <div class="toggle-grid">
+            <form action="{{ url_for('toggle', key='vlan10_to_vlan30') }}" method="post">
+                <button class="toggle {% if state.vlan10_to_vlan30 %}on{% else %}off{% endif %}" type="submit">
+                    <span class="label">VLAN 10 → VLAN 30</span>
+                    <span class="desc">laptop access to trusted services (HA, Proxmox)</span>
+                    <span class="state">{{ 'ON' if state.vlan10_to_vlan30 else 'OFF' }}</span>
+                </button>
+            </form>
+            <form action="{{ url_for('toggle', key='vlan20_wan') }}" method="post">
+                <button class="toggle {% if state.vlan20_wan %}on{% else %}off{% endif %}" type="submit">
+                    <span class="label">VLAN 20 internet</span>
+                    <span class="desc">IoT devices reach the WAN (default off)</span>
+                    <span class="state">{{ 'ON' if state.vlan20_wan else 'OFF' }}</span>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section>
+        <h2>DHCP leases</h2>
+        <table>
+            <thead><tr><th>hostname</th><th>IP</th><th>MAC</th></tr></thead>
+            <tbody>
+            {% for l in leases %}
+                <tr><td>{{ l.hostname }}</td><td>{{ l.ip }}</td><td class="mono">{{ l.mac }}</td></tr>
+            {% else %}
+                <tr><td colspan="3" class="empty">none</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>interfaces</h2>
+        <pre>{{ interfaces }}</pre>
+    </section>
+
+    <section>
+        <h2>routes</h2>
+        <pre>{{ routes }}</pre>
+    </section>
+
+    <section>
+        <h2>firewall</h2>
+        <pre>{{ firewall }}</pre>
+    </section>
+</main>
+</body>
+</html>
