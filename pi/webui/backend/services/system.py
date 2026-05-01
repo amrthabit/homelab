@@ -5,7 +5,13 @@ from ..models import Stats
 
 
 def stats() -> Stats:
-    uptime = sh(["uptime", "-p"])
+    raw = sh(["uptime", "-p"])
+    # `uptime -p` returns e.g. "up 1 day, 3 hours, 25 minutes" — keep largest unit only.
+    if raw.startswith("up "):
+        first = raw[3:].split(",")[0].strip()
+        uptime = f"up {first}" if first else raw
+    else:
+        uptime = raw
     load = Path("/proc/loadavg").read_text().split()[:3]
     meminfo = Path("/proc/meminfo").read_text().splitlines()
     mem_total = int(meminfo[0].split()[1])
