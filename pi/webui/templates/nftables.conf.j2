@@ -16,8 +16,8 @@ table inet filter {
         tcp dport 22 ip saddr 192.168.2.0/24 accept comment "SSH from VLAN 10"
         tcp dport 22 ip saddr 192.168.30.0/24 accept comment "SSH from VLAN 30"
 
-        tcp dport 8080 ip saddr 192.168.2.0/24 accept comment "Web UI from VLAN 10"
-        tcp dport 8080 ip saddr 192.168.30.0/24 accept comment "Web UI from VLAN 30"
+        tcp dport 80 ip saddr 192.168.2.0/24 accept comment "Web UI from VLAN 10"
+        tcp dport 80 ip saddr 192.168.30.0/24 accept comment "Web UI from VLAN 30"
 
         udp dport 67 iifname { "eth0.20", "eth0.30" } accept comment "DHCP server"
         udp dport 53 iifname { "eth0.20", "eth0.30" } accept comment "DNS"
