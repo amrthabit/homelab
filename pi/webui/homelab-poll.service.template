@@ -4,4 +4,5 @@ After=network-online.target
 
 [Service]
 Type=oneshot
+EnvironmentFile=-__REPO__/secrets.env
 ExecStart=__WEBUI__/venv/bin/python __WEBUI__/poll.py

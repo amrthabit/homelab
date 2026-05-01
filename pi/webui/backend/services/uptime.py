@@ -33,6 +33,26 @@ def sparkline(mac: str) -> SparkData:
     return SparkData(buckets=pcts, avg=avg, samples=len(rows))
 
 
+def metric_series(key: str, hours: int = 24) -> list[dict]:
+    """Return raw (ts, value) pairs for a metric key over the last `hours`."""
+    now = int(time.time())
+    start = now - hours * 3600
+    rows = _query(
+        "SELECT ts, value FROM metrics WHERE key = ? AND ts >= ? ORDER BY ts",
+        (key, start),
+    )
+    return [{"ts": ts, "value": v} for ts, v in rows]
+
+
+def metric_keys(prefix: str = "") -> list[str]:
+    """List all metric keys, optionally filtered by prefix."""
+    if prefix:
+        rows = _query("SELECT DISTINCT key FROM metrics WHERE key LIKE ? ORDER BY key", (prefix + "%",))
+    else:
+        rows = _query("SELECT DISTINCT key FROM metrics ORDER BY key")
+    return [r[0] for r in rows]
+
+
 def history(mac: str) -> list[HistoryPoint]:
     now = int(time.time())
     start = now - config.HISTORY_DAYS * 86400

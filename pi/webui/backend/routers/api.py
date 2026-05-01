@@ -44,6 +44,16 @@ def get_history(mac: str) -> list[HistoryPoint]:
     return uptime.history(mac)
 
 
+@router.get("/metric/keys")
+def get_metric_keys(prefix: str = ""):
+    return {"keys": uptime.metric_keys(prefix)}
+
+
+@router.get("/metric/{key:path}")
+def get_metric_series(key: str, hours: int = 24):
+    return {"key": key, "hours": hours, "points": uptime.metric_series(key, hours)}
+
+
 def _apply_and_respond(state) -> ToggleResult:
     state_svc.save(state)
     ok, msg = nftables.apply(state)
