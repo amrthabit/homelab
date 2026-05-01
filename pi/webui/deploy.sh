@@ -55,7 +55,15 @@ if [ ! -d node_modules ] || changed package.json || ([ -f package-lock.json ] &&
     [ -f package-lock.json ] && mark package-lock.json
 fi
 
-step "vite build" npx vite build --logLevel warn
+# Skip vite build if no frontend files changed since the last deploy
+NEED_BUILD=1
+if [ -n "$PREV_SHA" ] && [ -d "$WEBUI/frontend/dist" ]; then
+    if ! git -C "$REPO_ROOT" diff --name-only "$PREV_SHA" HEAD 2>/dev/null | grep -qE '^pi/webui/frontend/(src|public|index\.html|vite\.config\.ts|tsconfig\.json|package\.json|package-lock\.json)'; then
+        NEED_BUILD=0
+        echo "[deploy] vite build              skipped (no frontend changes)"
+    fi
+fi
+[ $NEED_BUILD -eq 1 ] && step "vite build" npx vite build --logLevel warn
 
 step "dnsmasq config" cp "$REPO_ROOT/pi/dnsmasq.conf" /etc/dnsmasq.d/homelab.conf
 step "nftables apply" "$WEBUI/venv/bin/python" -c "
@@ -79,7 +87,15 @@ if changed "$WEBUI/homelab-poll.timer"; then
     mark "$WEBUI/homelab-poll.timer"
 fi
 
-step "ui restart" systemctl restart homelab-ui
+# Skip ui restart if neither frontend (dist changed) nor backend changed
+NEED_RESTART=1
+if [ -n "$PREV_SHA" ] && [ "$NEED_BUILD" -eq 0 ]; then
+    if ! git -C "$REPO_ROOT" diff --name-only "$PREV_SHA" HEAD 2>/dev/null | grep -qE '^pi/webui/(backend/|poll\.py)'; then
+        NEED_RESTART=0
+        echo "[deploy] ui restart              skipped (no backend changes)"
+    fi
+fi
+[ $NEED_RESTART -eq 1 ] && step "ui restart" systemctl restart homelab-ui
 
 echo "$CUR_SHA" > "$STAMP_DIR/.last_deployed_sha"
 printf "[deploy] %-22s %2ds — http://%s  (sha %s)\n" "TOTAL" "$(($(date +%s) - START))" "$(hostname -I | awk '{print $1}')" "$CUR_SHA"
