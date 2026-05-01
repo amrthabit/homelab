@@ -62,32 +62,26 @@ async def capture(page_label: str) -> None:
         captured.clear()  # discard login traffic
         print(f"[probe] post-login URL: {page.url}")
 
-        # Navigate based on page label — try to find a link by text
+        # Bell admin uses ?c=<page>. Try common page names.
         targets = {
-            "usage": ["My usage", "Usage", "/myusage"],
-            "logs": ["System Logs", "System log", "Logs", "/syslog", "/logs"],
-            "statistics": ["Statistics", "/statistics"],
+            "usage":      ["myusage", "usage", "internetusage", "datausage"],
+            "logs":       ["systemlogs", "syslog", "logs", "log"],
+            "statistics": ["statistics", "stats"],
         }
-        for label in targets[page_label]:
-            try:
-                if label.startswith("/"):
-                    await page.goto(ADMIN_URL + label, wait_until="domcontentloaded")
-                    print(f"[probe] navigated direct: {label}")
-                else:
-                    link = await page.query_selector(f"a:has-text('{label}'), button:has-text('{label}')")
-                    if link:
-                        await link.click()
-                        print(f"[probe] clicked link: {label}")
-                await page.wait_for_timeout(2500)
+        for slug in targets[page_label]:
+            await page.goto(f"{ADMIN_URL}/?c={slug}", wait_until="domcontentloaded")
+            await page.wait_for_timeout(2500)
+            url_now = page.url
+            ok_count = len(captured)
+            print(f"[probe] tried ?c={slug} -> {url_now} ({ok_count} reqs so far)")
+            if ok_count > 0 and "/?c=dashboard" not in url_now:
+                # Stayed on the target page (didn't redirect to dashboard) and got data
                 break
-            except Exception as e:
-                print(f"[probe] try {label}: {type(e).__name__}")
-                continue
 
-        # Some pages need a "View" button
-        for view in ["View", "Refresh", "View usage", "Show"]:
+        # Click any "View"/"Refresh"-type button to trigger lazy data loads
+        for view in ["View", "Refresh", "View usage", "Show", "Submit"]:
             try:
-                el = await page.query_selector(f"button:has-text('{view}'), a:has-text('{view}')")
+                el = await page.query_selector(f"button:has-text('{view}'), input[value='{view}']")
                 if el:
                     await el.click()
                     print(f"[probe] clicked '{view}'")
