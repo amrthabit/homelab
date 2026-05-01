@@ -4,4 +4,4 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/opt/homelab/venv/bin/python /opt/homelab/poll.py
+ExecStart=__WEBUI__/venv/bin/python __WEBUI__/poll.py

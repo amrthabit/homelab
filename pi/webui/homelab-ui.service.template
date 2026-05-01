@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/opt/homelab/venv/bin/python /opt/homelab/app.py
-WorkingDirectory=/opt/homelab
+ExecStart=__WEBUI__/venv/bin/python __WEBUI__/app.py
+WorkingDirectory=__WEBUI__
 Restart=on-failure
 RestartSec=2
 User=root

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Homelab control plane — Flask UI on the Pi bridge box."""
+"""Homelab control plane — Flask JSON API + SPA static."""
 import json
 import sqlite3
 import subprocess
 import time
 from pathlib import Path
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, jsonify, send_from_directory, abort
 from jinja2 import Environment, FileSystemLoader
 
 APP_DIR = Path(__file__).parent.resolve()
+DIST_DIR = APP_DIR / "frontend" / "dist"
 STATE_FILE = Path("/var/lib/homelab/state.json")
 UPTIME_DB = Path("/var/lib/homelab/uptime.db")
 NFTABLES_CONF = Path("/etc/nftables.conf")
@@ -22,12 +23,14 @@ DEFAULT_STATE = {
     "trusted_wan_blocked_macs": [],
 }
 
-# Static devices not in dnsmasq leases — match poll.py
 STATIC_DEVICES = [
     {"mac": "host:192.168.2.1", "ip": "192.168.2.1", "hostname": "Gigahub"},
     {"mac": "host:192.168.2.10", "ip": "192.168.2.10", "hostname": "Pi (self)"},
     {"mac": "host:192.168.2.153", "ip": "192.168.2.153", "hostname": "TL-SG108E"},
 ]
+
+SPARK_HOURS = 48
+HISTORY_DAYS = 30
 
 app = Flask(__name__)
 
@@ -66,9 +69,9 @@ def sh(cmd: list[str]) -> str:
         return f"err: {e}"
 
 
-def get_dhcp_leases() -> dict[str, list[dict]]:
+def get_vlans() -> list[dict]:
     leases_path = Path("/var/lib/misc/dnsmasq.leases")
-    grouped = {"VLAN 20 (IoT)": [], "VLAN 30 (Trusted)": [], "VLAN 10 + Mgmt": list(STATIC_DEVICES)}
+    iot, trusted = [], []
     if leases_path.exists():
         for line in leases_path.read_text().splitlines():
             parts = line.split()
@@ -77,22 +80,14 @@ def get_dhcp_leases() -> dict[str, list[dict]]:
             ip = parts[2]
             entry = {"mac": parts[1], "ip": ip, "hostname": parts[3] if parts[3] != "*" else "—"}
             if ip.startswith("192.168.20."):
-                grouped["VLAN 20 (IoT)"].append(entry)
+                iot.append(entry)
             elif ip.startswith("192.168.30."):
-                grouped["VLAN 30 (Trusted)"].append(entry)
-    return grouped
-
-
-def get_interfaces() -> str:
-    return sh(["ip", "-br", "addr"])
-
-
-def get_routes() -> str:
-    return sh(["ip", "route"])
-
-
-def get_firewall() -> str:
-    return sh(["nft", "list", "ruleset"])
+                trusted.append(entry)
+    return [
+        {"name": "VLAN 20 (IoT)", "kind": "iot", "devices": iot},
+        {"name": "VLAN 30 (Trusted)", "kind": "trusted", "devices": trusted},
+        {"name": "VLAN 10 + Mgmt", "kind": "mgmt", "devices": list(STATIC_DEVICES)},
+    ]
 
 
 def get_stats() -> dict:
@@ -121,44 +116,27 @@ def db_query(query: str, args: tuple = ()) -> list[tuple]:
     return rows
 
 
-SPARK_HOURS = 48
-
 def sparkline(mac: str) -> dict:
-    """Return last SPARK_HOURS aggregated to hourly buckets, 1 bar = 1 hour."""
     now = int(time.time())
     start = now - SPARK_HOURS * 3600
-    rows = db_query(
-        "SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts",
-        (mac, start),
-    )
-    bucket_counts = [0] * SPARK_HOURS
-    bucket_ups = [0] * SPARK_HOURS
+    rows = db_query("SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts", (mac, start))
+    bcount = [0] * SPARK_HOURS
+    bup = [0] * SPARK_HOURS
     for ts, up in rows:
         idx = int((ts - start) / 3600)
         if 0 <= idx < SPARK_HOURS:
-            bucket_counts[idx] += 1
-            bucket_ups[idx] += up
-    pcts = []
-    for i in range(SPARK_HOURS):
-        if bucket_counts[i] == 0:
-            pcts.append(None)
-        else:
-            pcts.append(round(100 * bucket_ups[i] / bucket_counts[i]))
+            bcount[idx] += 1
+            bup[idx] += up
+    pcts = [None if bcount[i] == 0 else round(100 * bup[i] / bcount[i]) for i in range(SPARK_HOURS)]
     seen = [p for p in pcts if p is not None]
     avg = round(sum(seen) / len(seen), 1) if seen else None
     return {"buckets": pcts, "avg": avg, "samples": len(rows)}
 
 
-HISTORY_DAYS = 30
-
 def history(mac: str) -> list[dict]:
-    """Return last HISTORY_DAYS aggregated to hourly buckets."""
     now = int(time.time())
     start = now - HISTORY_DAYS * 86400
-    rows = db_query(
-        "SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts",
-        (mac, start),
-    )
+    rows = db_query("SELECT ts, up FROM samples WHERE mac = ? AND ts >= ? ORDER BY ts", (mac, start))
     buckets = {}
     for ts, up in rows:
         h = ts // 3600
@@ -174,25 +152,22 @@ def history(mac: str) -> list[dict]:
     return out
 
 
-@app.route("/")
-def index():
-    state = load_state()
-    leases = get_dhcp_leases()
-    # Attach sparkline data to each device
-    for vlan_items in leases.values():
-        for d in vlan_items:
+# ---------- API routes ----------
+
+@app.route("/api/snapshot")
+def api_snapshot():
+    vlans = get_vlans()
+    for vlan in vlans:
+        for d in vlan["devices"]:
             d["spark"] = sparkline(d["mac"])
-    return render_template(
-        "index.html",
-        state=state,
-        iot_wan_macs=set(state.get("iot_wan_macs", [])),
-        trusted_wan_blocked_macs=set(state.get("trusted_wan_blocked_macs", [])),
-        interfaces=get_interfaces(),
-        routes=get_routes(),
-        firewall=get_firewall(),
-        leases=leases,
-        stats=get_stats(),
-    )
+    return jsonify({
+        "state": load_state(),
+        "stats": get_stats(),
+        "vlans": vlans,
+        "interfaces": sh(["ip", "-br", "addr"]),
+        "routes": sh(["ip", "route"]),
+        "firewall": sh(["nft", "list", "ruleset"]),
+    })
 
 
 @app.route("/api/history/<path:mac>")
@@ -200,21 +175,19 @@ def api_history(mac):
     return jsonify(history(mac))
 
 
-@app.route("/toggle/<key>", methods=["POST"])
-def toggle(key):
+@app.route("/api/toggle/<key>", methods=["POST"])
+def api_toggle(key):
     state = load_state()
     if key not in state or not isinstance(state[key], bool):
         return jsonify({"error": "unknown bool key"}), 400
     state[key] = not state[key]
     save_state(state)
     ok, msg = apply_nftables(state)
-    if not ok:
-        return jsonify({"error": msg}), 500
-    return redirect(url_for("index"))
+    return jsonify({"ok": ok, "msg": msg, "state": state}), (200 if ok else 500)
 
 
-@app.route("/iot_wan/<mac>", methods=["POST"])
-def toggle_iot_wan(mac):
+@app.route("/api/iot_wan/<mac>", methods=["POST"])
+def api_iot_wan(mac):
     state = load_state()
     macs = set(state.get("iot_wan_macs", []))
     mac = mac.lower()
@@ -222,13 +195,11 @@ def toggle_iot_wan(mac):
     state["iot_wan_macs"] = sorted(macs)
     save_state(state)
     ok, msg = apply_nftables(state)
-    if not ok:
-        return jsonify({"error": msg}), 500
-    return redirect(url_for("index"))
+    return jsonify({"ok": ok, "msg": msg, "state": state}), (200 if ok else 500)
 
 
-@app.route("/trusted_wan/<mac>", methods=["POST"])
-def toggle_trusted_wan(mac):
+@app.route("/api/trusted_wan/<mac>", methods=["POST"])
+def api_trusted_wan(mac):
     state = load_state()
     blocked = set(state.get("trusted_wan_blocked_macs", []))
     mac = mac.lower()
@@ -236,9 +207,26 @@ def toggle_trusted_wan(mac):
     state["trusted_wan_blocked_macs"] = sorted(blocked)
     save_state(state)
     ok, msg = apply_nftables(state)
-    if not ok:
-        return jsonify({"error": msg}), 500
-    return redirect(url_for("index"))
+    return jsonify({"ok": ok, "msg": msg, "state": state}), (200 if ok else 500)
+
+
+# ---------- SPA static ----------
+
+@app.route("/")
+def root():
+    index = DIST_DIR / "index.html"
+    if not index.exists():
+        return "<pre>Frontend not built. Run pi/webui/frontend/ build (see deploy.sh).</pre>", 503
+    return send_from_directory(DIST_DIR, "index.html")
+
+
+@app.route("/<path:path>")
+def static_files(path):
+    target = DIST_DIR / path
+    if target.is_file():
+        return send_from_directory(DIST_DIR, path)
+    # SPA fallback
+    return send_from_directory(DIST_DIR, "index.html")
 
 
 if __name__ == "__main__":
