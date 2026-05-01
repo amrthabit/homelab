@@ -6,6 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=__WEBUI__
+EnvironmentFile=-__REPO__/secrets.env
 ExecStart=__WEBUI__/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 80 --timeout-graceful-shutdown 2
 Restart=on-failure
 RestartSec=2

@@ -51,12 +51,12 @@ systemctl reload-or-restart dnsmasq
 
 # 6. Systemd units (only update if templates changed)
 if changed "$WEBUI/homelab-ui.service.template"; then
-    sed "s|__WEBUI__|$WEBUI|g" "$WEBUI/homelab-ui.service.template" > /etc/systemd/system/homelab-ui.service
+    sed -e "s|__WEBUI__|$WEBUI|g" -e "s|__REPO__|$REPO_ROOT|g" "$WEBUI/homelab-ui.service.template" > /etc/systemd/system/homelab-ui.service
     mark "$WEBUI/homelab-ui.service.template"
     systemctl daemon-reload
 fi
 if changed "$WEBUI/homelab-poll.service.template"; then
-    sed "s|__WEBUI__|$WEBUI|g" "$WEBUI/homelab-poll.service.template" > /etc/systemd/system/homelab-poll.service
+    sed -e "s|__WEBUI__|$WEBUI|g" -e "s|__REPO__|$REPO_ROOT|g" "$WEBUI/homelab-poll.service.template" > /etc/systemd/system/homelab-poll.service
     mark "$WEBUI/homelab-poll.service.template"
     systemctl daemon-reload
 fi
